@@ -2,6 +2,7 @@ defmodule PhoenixPaas.AppsTest do
   use PhoenixPaas.DataCase
 
   alias PhoenixPaas.Apps
+  alias PhoenixPaas.Apps.App
   alias PhoenixPaas.TenancyFixtures
 
   setup do
@@ -48,6 +49,20 @@ defmodule PhoenixPaas.AppsTest do
 
       assert "can't be blank" in errors_on(changeset).github_repo
       assert "can't be blank" in errors_on(changeset).host
+    end
+  end
+
+  describe "runtime_apt_packages/1" do
+    test "rapid-tools includes media and archive packages" do
+      packages = App.runtime_apt_packages("rapid-tools")
+
+      assert "zip" in packages
+      assert "ffmpeg" in packages
+      assert "imagemagick" in packages
+    end
+
+    test "trip-planner has no extra runtime packages" do
+      assert App.runtime_apt_packages("trip-planner") == []
     end
   end
 

@@ -88,7 +88,7 @@ defmodule PhoenixPaas.Deploy.Ssh do
     target = "#{server.ssh_user}@#{server.host_ip}"
 
     with {:ok, upload_out} <- scp(tarball, remote_tar, key_path, target),
-         {:ok, build_out} <- remote_build(remote_tar, key_path, target, server, config, sha) do
+         {:ok, build_out} <- remote_build(remote_tar, key_path, target, server, app, config, sha) do
       log =
         [
           "==> Cloning #{app.github_repo} (branch #{app.branch})",
@@ -112,8 +112,8 @@ defmodule PhoenixPaas.Deploy.Ssh do
     end
   end
 
-  defp remote_build(remote_tar, key_path, target, server, config, sha) do
-    script = remote_build_script(server, config, sha, remote_tar)
+  defp remote_build(remote_tar, key_path, target, server, app, config, sha) do
+    script = remote_build_script(server, app, config, sha, remote_tar)
     script_path = Path.join(System.tmp_dir!(), "phoenix_paas_remote_#{sha}.sh")
 
     try do
@@ -139,12 +139,35 @@ defmodule PhoenixPaas.Deploy.Ssh do
     "'" <> String.replace(value, "'", "'\\''") <> "'"
   end
 
-  defp remote_build_script(server, config, sha, remote_tar) do
+  defp remote_build_script(server, app, config, sha, remote_tar) do
+    runtime_packages = PhoenixPaas.Apps.App.runtime_apt_packages(app.slug)
+    post_install = PhoenixPaas.Apps.App.runtime_post_install_steps(app.slug)
+
+    packages_install =
+      case runtime_packages do
+        [] ->
+          ""
+
+        packages ->
+          """
+          log "Installing runtime packages: #{Enum.join(packages, " ")}"
+          sudo DEBIAN_FRONTEND=noninteractive apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y #{Enum.join(packages, " ")}
+          """
+      end
+
+    post_install_script =
+      case post_install do
+        [] -> ""
+        steps -> Enum.map_join(steps, "\n", & &1) <> "\n"
+      end
+
     """
     set -euo pipefail
 
     log() { printf '==> %s\\n' "$*"; }
 
+    #{packages_install}#{post_install_script}
     if ! swapon --show | grep -q /swapfile; then
       sudo fallocate -l 2G /swapfile || true
       sudo chmod 600 /swapfile || true

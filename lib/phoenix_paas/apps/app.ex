@@ -61,6 +61,21 @@ defmodule PhoenixPaas.Apps.App do
   def default_release_path("trip-planner"), do: "/opt/trip_planner_ia"
   def default_release_path(slug) when is_binary(slug), do: "/opt/#{release_name(slug)}"
 
+  @rapid_tools_packages ~w(ffmpeg imagemagick ghostscript zip unzip)
+
+  def runtime_apt_packages("rapid-tools"), do: @rapid_tools_packages
+  def runtime_apt_packages(_slug), do: []
+
+  def runtime_post_install_steps("rapid-tools") do
+    [
+      "if [[ -f /etc/ImageMagick-6/policy.xml ]]; then",
+      ~s(sed -i 's/<policy domain="coder" rights="none" pattern="PDF"/<policy domain="coder" rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml || true),
+      "fi"
+    ]
+  end
+
+  def runtime_post_install_steps(_slug), do: []
+
   def deploy_config(%__MODULE__{} = app) do
     release_path = app.release_path || default_release_path(app.slug)
     basename = release_path |> Path.basename()
