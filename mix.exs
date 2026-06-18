@@ -70,7 +70,9 @@ defmodule PhoenixPaas.MixProject do
       {:oban, "~> 2.19"},
       {:cloak_ecto, "~> 1.3"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:mox, "~> 1.2", only: :test}
+      {:mox, "~> 1.2", only: :test},
+      {:aws_signature, "~> 0.4"},
+      {:req, "~> 0.5"}
     ]
   end
 

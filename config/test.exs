@@ -44,6 +44,7 @@ config :phoenix_paas, Oban,
   notifier: Oban.Notifiers.Isolated
 
 config :phoenix_paas, :deploy_runner, PhoenixPaas.Deploy.RunnerMock
+config :phoenix_paas, :lightsail_client, PhoenixPaas.AWS.LightsailMock
 
 config :phoenix_paas, PhoenixPaas.Vault,
   ciphers: [

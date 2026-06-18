@@ -31,6 +31,15 @@ if config_env() != :test do
     end
 
   config :phoenix_paas, :deploy_runner, deploy_runner
+
+  lightsail_client =
+    if System.get_env("AWS_ACCESS_KEY_ID") in [nil, ""] do
+      PhoenixPaas.AWS.Lightsail.Stub
+    else
+      PhoenixPaas.AWS.Lightsail.ExAwsClient
+    end
+
+  config :phoenix_paas, :lightsail_client, lightsail_client
 end
 
 if config_env() == :prod do

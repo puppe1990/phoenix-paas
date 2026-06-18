@@ -195,11 +195,11 @@ defmodule PhoenixPaas.Deploy.Ssh do
     sudo cp -a "_build/prod/rel/#{config.release_name}/." "$RELEASE_DIR/"
     sudo ln -sfn "$RELEASE_DIR" #{config.release_path}/current
 
-    if [[ -f #{config.env_file} ]]; then
+    if [[ -f #{config.env_file} && -x #{config.release_path}/current/bin/migrate ]]; then
       log "Running migrations"
       sudo bash -c 'set -a; source #{config.env_file}; set +a; #{config.release_path}/current/bin/migrate'
     else
-      log "No #{config.env_file} — skipping migrations"
+      log "Skipping migrations"
     fi
 
     log "Restarting #{config.systemd_unit}"
