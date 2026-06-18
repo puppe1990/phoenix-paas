@@ -4,12 +4,28 @@ defmodule PhoenixPaasWeb.UserRegistrationControllerTest do
   import PhoenixPaas.AccountsFixtures
 
   describe "GET /users/register" do
-    test "renders registration page", %{conn: conn} do
+    test "renders signup page with form and branding", %{conn: conn} do
       conn = get(conn, ~p"/users/register")
       response = html_response(conn, 200)
-      assert response =~ "Register"
+
+      assert response =~ "Create your account"
+      assert response =~ "Phoenix PaaS"
+      assert response =~ ~s(id="signup-form")
+      assert response =~ ~s(type="email")
+      assert response =~ ~s(type="password")
+      assert response =~ "Password"
+      assert response =~ "Confirm password"
+      refute response =~ "magic link"
+      assert response =~ "Create account"
       assert response =~ ~p"/users/log-in"
-      assert response =~ ~p"/users/register"
+    end
+
+    test "renders link to log in for existing users", %{conn: conn} do
+      conn = get(conn, ~p"/users/register")
+      response = html_response(conn, 200)
+
+      assert response =~ "Already have an account?"
+      assert response =~ "Log in"
     end
 
     test "redirects if already logged in", %{conn: conn} do
@@ -20,31 +36,100 @@ defmodule PhoenixPaasWeb.UserRegistrationControllerTest do
   end
 
   describe "POST /users/register" do
-    @tag :capture_log
-    test "creates account but does not log in", %{conn: conn} do
+    test "creates account and logs the user in", %{conn: conn} do
       email = unique_user_email()
+      password = valid_user_password()
 
       conn =
         post(conn, ~p"/users/register", %{
-          "user" => valid_user_attributes(email: email)
+          "user" => %{
+            "email" => email,
+            "password" => password,
+            "password_confirmation" => password
+          }
         })
 
-      refute get_session(conn, :user_token)
-      assert redirected_to(conn) == ~p"/users/log-in"
-
-      assert conn.assigns.flash["info"] =~
-               ~r/An email was sent to .*, please access it to confirm your account/
+      assert get_session(conn, :user_token)
+      assert redirected_to(conn) == ~p"/"
+      assert conn.assigns.flash["info"] =~ "Account created successfully"
     end
 
-    test "render errors for invalid data", %{conn: conn} do
+    test "renders errors for invalid email", %{conn: conn} do
       conn =
         post(conn, ~p"/users/register", %{
-          "user" => %{"email" => "with spaces"}
+          "user" => %{
+            "email" => "with spaces",
+            "password" => valid_user_password(),
+            "password_confirmation" => valid_user_password()
+          }
         })
 
       response = html_response(conn, 200)
-      assert response =~ "Register"
+      assert response =~ "Create your account"
+      assert response =~ ~s(id="signup-form")
       assert response =~ "must have the @ sign and no spaces"
+    end
+
+    test "renders errors for short password", %{conn: conn} do
+      conn =
+        post(conn, ~p"/users/register", %{
+          "user" => %{
+            "email" => unique_user_email(),
+            "password" => "short",
+            "password_confirmation" => "short"
+          }
+        })
+
+      response = html_response(conn, 200)
+      assert response =~ "should be at least 12 character(s)"
+    end
+
+    test "renders errors for password mismatch", %{conn: conn} do
+      conn =
+        post(conn, ~p"/users/register", %{
+          "user" => %{
+            "email" => unique_user_email(),
+            "password" => valid_user_password(),
+            "password_confirmation" => "different password!"
+          }
+        })
+
+      response = html_response(conn, 200)
+      assert response =~ "does not match password"
+    end
+
+    test "renders errors for duplicate email", %{conn: conn} do
+      %{email: email} = user_fixture()
+
+      conn =
+        post(conn, ~p"/users/register", %{
+          "user" => %{
+            "email" => email,
+            "password" => valid_user_password(),
+            "password_confirmation" => valid_user_password()
+          }
+        })
+
+      response = html_response(conn, 200)
+      assert response =~ "Create your account"
+      assert response =~ "has already been taken"
+    end
+
+    test "preserves email on validation error", %{conn: conn} do
+      email = "invalid-email"
+
+      conn =
+        post(conn, ~p"/users/register", %{
+          "user" => %{
+            "email" => email,
+            "password" => valid_user_password(),
+            "password_confirmation" => valid_user_password()
+          }
+        })
+
+      response = html_response(conn, 200)
+
+      assert response =~ ~s(value="#{email}")
     end
   end
 end

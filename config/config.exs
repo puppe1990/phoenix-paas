@@ -24,8 +24,11 @@ config :phoenix_paas,
   ecto_repos: [PhoenixPaas.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+config :phoenix_paas, :lightsail_client, PhoenixPaas.AWS.Lightsail.Stub
+
 config :phoenix_paas, Oban,
   repo: PhoenixPaas.Repo,
+  engine: Oban.Engines.Lite,
   prefix: false,
   notifier: Oban.Notifiers.Isolated,
   peer: Oban.Peers.Isolated,

@@ -39,10 +39,12 @@ config :phoenix,
   sort_verified_routes_query_params: true
 
 config :phoenix_paas, Oban,
+  engine: Oban.Engines.Lite,
   testing: :manual,
   notifier: Oban.Notifiers.Isolated
 
 config :phoenix_paas, :deploy_runner, PhoenixPaas.Deploy.RunnerMock
+config :phoenix_paas, :lightsail_client, PhoenixPaas.AWS.LightsailMock
 
 config :phoenix_paas, PhoenixPaas.Vault,
   ciphers: [

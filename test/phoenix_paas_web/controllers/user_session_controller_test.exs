@@ -14,7 +14,11 @@ defmodule PhoenixPaasWeb.UserSessionControllerTest do
       response = html_response(conn, 200)
       assert response =~ "Log in"
       assert response =~ ~p"/users/register"
-      assert response =~ "Log in with email"
+      assert response =~ ~s(id="login_form")
+      assert response =~ "Password"
+      refute response =~ "Log in with email"
+      assert response =~ ~s(id="signup-link")
+      assert response =~ "Create account"
     end
 
     test "renders login page with email filled in (sudo mode)", %{conn: conn, user: user} do
@@ -25,19 +29,11 @@ defmodule PhoenixPaasWeb.UserSessionControllerTest do
         |> html_response(200)
 
       assert html =~ "You need to reauthenticate"
-      refute html =~ "Register"
-      assert html =~ "Log in with email"
+      refute html =~ "Sign up"
+      refute html =~ "Log in with email"
 
       assert html =~
-               ~s(<input type="email" name="user[email]" id="login_form_magic_email" value="#{user.email}")
-    end
-
-    test "renders login page (email + password)", %{conn: conn} do
-      conn = get(conn, ~p"/users/log-in?mode=password")
-      response = html_response(conn, 200)
-      assert response =~ "Log in"
-      assert response =~ ~p"/users/register"
-      assert response =~ "Log in with email"
+               ~s(<input type="email" name="user[email]" id="user_email" value="#{user.email}" class="w-full input" required readonly)
     end
   end
 
@@ -138,17 +134,7 @@ defmodule PhoenixPaasWeb.UserSessionControllerTest do
     end
   end
 
-  describe "POST /users/log-in - magic link" do
-    test "sends magic link email when user exists", %{conn: conn, user: user} do
-      conn =
-        post(conn, ~p"/users/log-in", %{
-          "user" => %{"email" => user.email}
-        })
-
-      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "If your email is in our system"
-      assert PhoenixPaas.Repo.get_by!(Accounts.UserToken, user_id: user.id).context == "login"
-    end
-
+  describe "POST /users/log-in - magic link token" do
     test "logs the user in", %{conn: conn, user: user} do
       {token, _hashed_token} = generate_user_magic_link_token(user)
 

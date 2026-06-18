@@ -10,6 +10,22 @@ defmodule PhoenixPaas.AppsTest do
     %{scope: scope, server: server}
   end
 
+  describe "change_app/2" do
+    test "does not set deploy defaults when slug is missing" do
+      changeset = Apps.change_app(%PhoenixPaas.Apps.App{})
+
+      assert Ecto.Changeset.get_field(changeset, :systemd_unit) == nil
+      assert Ecto.Changeset.get_field(changeset, :release_path) == nil
+    end
+
+    test "sets deploy defaults when slug is provided" do
+      changeset = Apps.change_app(%PhoenixPaas.Apps.App{}, %{slug: "my-app"})
+
+      assert Ecto.Changeset.get_field(changeset, :systemd_unit) == "phx-my-app"
+      assert Ecto.Changeset.get_field(changeset, :release_path) == "/opt/my_app"
+    end
+  end
+
   describe "create_app/2" do
     test "persists app linked to server", %{scope: scope, server: server} do
       attrs = %{

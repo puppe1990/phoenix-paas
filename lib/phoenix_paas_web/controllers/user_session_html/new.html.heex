@@ -1,36 +1,28 @@
 <Layouts.app flash={@flash} current_scope={@current_scope} active_tab={:auth}>
-  <div class="mx-auto max-w-sm space-y-4">
+  <div class="paas-card mx-auto max-w-sm space-y-5 p-6">
     <div class="text-center">
       <.header>
-        <p>Log in</p>
+        Log in
         <:subtitle>
           <%= if @current_scope do %>
             You need to reauthenticate to perform sensitive actions on your account.
           <% else %>
-            Don't have an account? <.link
+            Don't have an account?
+            <.link
               navigate={~p"/users/register"}
-              class="font-semibold text-brand hover:underline"
-              phx-no-format
-            >Sign up</.link> for an account now.
+              class="font-semibold text-hd-orange hover:underline"
+            >
+              Sign up
+            </.link>
           <% end %>
         </:subtitle>
       </.header>
     </div>
 
-    <div :if={local_mail_adapter?()} class="alert alert-info">
-      <.icon name="hero-information-circle" class="size-6 shrink-0" />
-      <div>
-        <p>You are running the local mail adapter.</p>
-        <p>
-          To see sent emails, visit <.link href="/dev/mailbox" class="underline">the mailbox page</.link>.
-        </p>
-      </div>
-    </div>
-
-    <.form :let={f} for={@form} as={:user} id="login_form_magic" action={~p"/users/log-in"}>
+    <.form for={@form} id="login_form" action={~p"/users/log-in"}>
       <.input
         readonly={!!@current_scope}
-        field={f[:email]}
+        field={@form[:email]}
         type="email"
         label="Email"
         autocomplete="username"
@@ -38,36 +30,35 @@
         required
         phx-mounted={JS.focus()}
       />
-      <.button class="btn btn-primary w-full">
-        Log in with email <span aria-hidden="true">→</span>
-      </.button>
-    </.form>
-
-    <div class="divider">or</div>
-
-    <.form :let={f} for={@form} as={:user} id="login_form_password" action={~p"/users/log-in"}>
       <.input
-        readonly={!!@current_scope}
-        field={f[:email]}
-        type="email"
-        label="Email"
-        autocomplete="username"
-        spellcheck="false"
-        required
-      />
-      <.input
-        field={f[:password]}
+        field={@form[:password]}
         type="password"
         label="Password"
         autocomplete="current-password"
         spellcheck="false"
+        required
       />
-      <.button class="btn btn-primary w-full" name={@form[:remember_me].name} value="true">
-        Log in and stay logged in <span aria-hidden="true">→</span>
+      <.button
+        class="paas-btn-primary mt-4 w-full justify-center py-2.5"
+        name={@form[:remember_me].name}
+        value="true"
+      >
+        Log in and stay logged in
       </.button>
-      <.button class="btn btn-primary btn-soft w-full mt-2">
+      <.button class="paas-btn-secondary mt-2 w-full justify-center py-2.5">
         Log in only this time
       </.button>
     </.form>
+
+    <div :if={!@current_scope} class="border-t border-hd-border pt-4">
+      <p class="mb-3 text-center text-xs text-hd-muted">New to Phoenix PaaS?</p>
+      <.link
+        id="signup-link"
+        navigate={~p"/users/register"}
+        class="paas-btn-secondary flex w-full justify-center py-2.5"
+      >
+        <.icon name="hero-user-plus" class="size-4" /> Create account
+      </.link>
+    </div>
   </div>
 </Layouts.app>

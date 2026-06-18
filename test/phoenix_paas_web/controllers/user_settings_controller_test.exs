@@ -7,10 +7,13 @@ defmodule PhoenixPaasWeb.UserSettingsControllerTest do
   setup :register_and_log_in_user
 
   describe "GET /users/settings" do
-    test "renders settings page", %{conn: conn} do
+    test "renders settings page with navigation back to dashboard", %{conn: conn} do
       conn = get(conn, ~p"/users/settings")
       response = html_response(conn, 200)
-      assert response =~ "Settings"
+      assert response =~ "Account Settings"
+      assert response =~ "Back to dashboard"
+      assert response =~ "Dashboard"
+      assert response =~ ~s(href="/")
     end
 
     test "redirects if user is not logged in" do

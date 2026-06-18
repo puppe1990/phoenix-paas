@@ -135,9 +135,10 @@ defmodule PhoenixPaasWeb.ServerLive.Index do
               </.link>
             </div>
 
-            <div
+            <.link
               :for={{id, server} <- @streams.servers}
               id={id}
+              navigate={~p"/servers/#{server.id}"}
               class="paas-card flex flex-col justify-between p-4 transition-all hover:border-hd-orange/30"
             >
               <div class="space-y-3">
@@ -149,9 +150,42 @@ defmodule PhoenixPaasWeb.ServerLive.Index do
                     </span>
                   </div>
                   <span class="flex items-center gap-1.5 rounded border border-hd-border bg-hd-bg px-2 py-0.5 font-mono text-[10px]">
-                    <span class="size-1.5 animate-pulse rounded-full bg-hd-green" />
-                    <span class="font-semibold text-hd-muted">ONLINE</span>
+                    <span class={[
+                      "size-1.5 rounded-full",
+                      server.instance_status == "running" && "animate-pulse bg-hd-green",
+                      server.instance_status != "running" && "bg-hd-muted"
+                    ]} />
+                    <span class="font-semibold text-hd-muted">
+                      {String.upcase(server.instance_status || "unknown")}
+                    </span>
                   </span>
+                </div>
+
+                <div
+                  :if={PhoenixPaas.Servers.Server.specs_configured?(server)}
+                  class="grid grid-cols-3 gap-2 font-mono text-[10px]"
+                >
+                  <div class="rounded border border-hd-border bg-hd-bg px-2 py-1 text-center">
+                    <p class="text-hd-muted">Plan</p>
+                    <p class="font-semibold text-hd-text">{server.bundle_name}</p>
+                  </div>
+                  <div class="rounded border border-hd-border bg-hd-bg px-2 py-1 text-center">
+                    <p class="text-hd-muted">RAM</p>
+                    <p class="font-semibold text-hd-text">
+                      {PhoenixPaas.Servers.Server.format_ram(server)}
+                    </p>
+                  </div>
+                  <div class="rounded border border-hd-border bg-hd-bg px-2 py-1 text-center">
+                    <p class="text-hd-muted">vCPU</p>
+                    <p class="font-semibold text-hd-text">{server.cpu_count}</p>
+                  </div>
+                </div>
+
+                <div
+                  :if={not PhoenixPaas.Servers.Server.specs_configured?(server)}
+                  class="rounded border border-dashed border-hd-border px-2.5 py-2 text-center text-[10px] text-hd-muted"
+                >
+                  Open to sync Lightsail specs
                 </div>
 
                 <div class="flex items-center justify-between rounded border border-hd-border bg-hd-bg px-2.5 py-1.5 font-mono text-[11px]">
@@ -169,7 +203,7 @@ defmodule PhoenixPaasWeb.ServerLive.Index do
                   </button>
                 </div>
               </div>
-            </div>
+            </.link>
           </div>
 
           <.link
@@ -188,7 +222,9 @@ defmodule PhoenixPaasWeb.ServerLive.Index do
         <script :type={Phoenix.LiveView.ColocatedHook} name=".Copy">
           export default {
             mounted() {
-              this.el.addEventListener("click", () => {
+              this.el.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
                 navigator.clipboard.writeText(this.el.dataset.clipboard || "");
               });
             }

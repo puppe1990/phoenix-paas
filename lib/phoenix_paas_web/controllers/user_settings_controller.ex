@@ -1,12 +1,13 @@
 defmodule PhoenixPaasWeb.UserSettingsController do
   use PhoenixPaasWeb, :controller
 
-  alias PhoenixPaas.Accounts
+  alias PhoenixPaas.{Accounts, Apps, Servers}
   alias PhoenixPaasWeb.UserAuth
 
   import PhoenixPaasWeb.UserAuth, only: [require_sudo_mode: 2]
 
   plug :require_sudo_mode
+  plug :assign_panel_counts
   plug :assign_email_and_password_changesets
 
   def edit(conn, _params) do
@@ -65,6 +66,16 @@ defmodule PhoenixPaasWeb.UserSettingsController do
         |> put_flash(:error, "Email change link is invalid or it has expired.")
         |> redirect(to: ~p"/users/settings")
     end
+  end
+
+  defp assign_panel_counts(conn, _opts) do
+    scope = conn.assigns.current_scope
+    servers = Servers.list_servers(scope)
+    apps = Apps.list_apps(scope)
+
+    conn
+    |> assign(:server_count, length(servers))
+    |> assign(:app_count, length(apps))
   end
 
   defp assign_email_and_password_changesets(conn, _opts) do
