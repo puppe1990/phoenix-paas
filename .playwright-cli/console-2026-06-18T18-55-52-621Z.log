@@ -1,8 +1,0 @@
-[    4485ms] [INFO] %c📡 [info] POST /users/register
- color: inherit; @ http://127.0.0.1:4000/phoenix/live_reload/frame:1854
-[    4530ms] [INFO] %c📡 [info] Sent 302 in 45ms
- color: inherit; @ http://127.0.0.1:4000/phoenix/live_reload/frame:1854
-[    4547ms] [INFO] %c📡 [info] GET /users/log-in
- color: inherit; @ http://127.0.0.1:4000/phoenix/live_reload/frame:1854
-[    4548ms] [INFO] %c📡 [info] Sent 200 in 708µs
- color: inherit; @ http://127.0.0.1:4000/phoenix/live_reload/frame:1854
