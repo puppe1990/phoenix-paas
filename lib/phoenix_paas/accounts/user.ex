@@ -57,6 +57,16 @@ defmodule PhoenixPaas.Accounts.User do
   end
 
   @doc """
+  A user changeset for registration with email and password.
+  """
+  def registration_changeset(user, attrs, opts \\ []) do
+    user
+    |> email_changeset(attrs, Keyword.take(opts, [:validate_unique]))
+    |> password_changeset(attrs, opts)
+    |> put_change(:confirmed_at, DateTime.utc_now(:second))
+  end
+
+  @doc """
   A user changeset for changing the password.
 
   It is important to validate the length of the password, as long passwords may

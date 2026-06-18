@@ -39,6 +39,7 @@ config :phoenix,
   sort_verified_routes_query_params: true
 
 config :phoenix_paas, Oban,
+  engine: Oban.Engines.Lite,
   testing: :manual,
   notifier: Oban.Notifiers.Isolated
 

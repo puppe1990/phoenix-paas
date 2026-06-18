@@ -101,9 +101,13 @@ defmodule PhoenixPaas.Accounts do
   @doc """
   Registers a user and creates their default tenant (owner membership).
   """
+  def change_user_registration(user, attrs \\ %{}, opts \\ []) do
+    User.registration_changeset(user, attrs, opts)
+  end
+
   def register_user_with_tenant(attrs) do
     Ecto.Multi.new()
-    |> Ecto.Multi.insert(:user, User.email_changeset(%User{}, attrs))
+    |> Ecto.Multi.insert(:user, User.registration_changeset(%User{}, attrs))
     |> Ecto.Multi.run(:tenant, fn _repo, %{user: user} ->
       tenant_attrs = %{
         name: tenant_name_from_email(user.email),

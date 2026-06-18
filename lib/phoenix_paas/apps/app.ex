@@ -74,11 +74,15 @@ defmodule PhoenixPaas.Apps.App do
   end
 
   defp put_deploy_defaults(changeset) do
-    slug = get_field(changeset, :slug)
+    case get_field(changeset, :slug) do
+      slug when is_binary(slug) and slug != "" ->
+        changeset
+        |> put_default(:systemd_unit, default_systemd_unit(slug))
+        |> put_default(:release_path, default_release_path(slug))
 
-    changeset
-    |> put_default(:systemd_unit, default_systemd_unit(slug))
-    |> put_default(:release_path, default_release_path(slug))
+      _ ->
+        changeset
+    end
   end
 
   defp put_default(changeset, field, default) do

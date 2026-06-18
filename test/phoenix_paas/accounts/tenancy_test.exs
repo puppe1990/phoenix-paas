@@ -7,10 +7,18 @@ defmodule PhoenixPaas.Accounts.TenancyTest do
 
   describe "register_user_with_tenant/1" do
     test "creates user, tenant, and owner membership" do
+      password = "password123456"
+
       assert {:ok, %{user: user, tenant: tenant, membership: membership}} =
-               Accounts.register_user_with_tenant(%{email: "matheus.puppe@gmail.com"})
+               Accounts.register_user_with_tenant(%{
+                 email: "matheus.puppe@gmail.com",
+                 password: password,
+                 password_confirmation: password
+               })
 
       assert user.email == "matheus.puppe@gmail.com"
+      assert user.confirmed_at
+      assert Accounts.User.valid_password?(user, password)
       assert tenant.slug == "matheus-puppe"
       assert membership.role == "owner"
     end

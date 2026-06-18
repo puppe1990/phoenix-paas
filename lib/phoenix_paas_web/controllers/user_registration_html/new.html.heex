@@ -1,31 +1,53 @@
 <Layouts.app flash={@flash} current_scope={@current_scope} active_tab={:auth}>
-  <div class="mx-auto max-w-sm">
+  <div class="paas-card space-y-5 p-6">
     <div class="text-center">
       <.header>
-        Register for an account
+        Create your account
         <:subtitle>
-          Already registered?
-          <.link navigate={~p"/users/log-in"} class="font-semibold text-brand hover:underline">
+          Already have an account?
+          <.link navigate={~p"/users/log-in"} class="font-semibold text-hd-orange hover:underline">
             Log in
           </.link>
-          to your account now.
         </:subtitle>
       </.header>
     </div>
 
-    <.form :let={f} for={@changeset} action={~p"/users/register"}>
+    <p class="text-center text-xs leading-relaxed text-hd-muted">
+      Create your workspace with email and password. You'll be logged in right away.
+    </p>
+
+    <.form for={@form} id="signup-form" action={~p"/users/register"}>
       <.input
-        field={f[:email]}
+        field={@form[:email]}
         type="email"
-        label="Email"
+        label="Work email"
         autocomplete="username"
         spellcheck="false"
         required
         phx-mounted={JS.focus()}
       />
+      <.input
+        field={@form[:password]}
+        type="password"
+        label="Password"
+        autocomplete="new-password"
+        spellcheck="false"
+        required
+      />
+      <.input
+        field={@form[:password_confirmation]}
+        type="password"
+        label="Confirm password"
+        autocomplete="new-password"
+        spellcheck="false"
+        required
+      />
 
-      <.button phx-disable-with="Creating account..." class="btn btn-primary w-full">
-        Create an account
+      <.button
+        phx-disable-with="Creating account..."
+        class="paas-btn-primary mt-4 w-full justify-center py-2.5"
+      >
+        Create account
       </.button>
     </.form>
   </div>

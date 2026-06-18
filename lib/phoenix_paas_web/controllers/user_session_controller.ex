@@ -48,23 +48,6 @@ defmodule PhoenixPaasWeb.UserSessionController do
     end
   end
 
-  # magic link request
-  def create(conn, %{"user" => %{"email" => email}}) do
-    if user = Accounts.get_user_by_email(email) do
-      Accounts.deliver_login_instructions(
-        user,
-        &url(~p"/users/log-in/#{&1}")
-      )
-    end
-
-    info =
-      "If your email is in our system, you will receive instructions for logging in shortly."
-
-    conn
-    |> put_flash(:info, info)
-    |> redirect(to: ~p"/users/log-in")
-  end
-
   def confirm(conn, %{"token" => token}) do
     if user = Accounts.get_user_by_magic_link_token(token) do
       form = Phoenix.Component.to_form(%{"token" => token}, as: "user")

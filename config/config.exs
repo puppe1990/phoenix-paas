@@ -26,6 +26,7 @@ config :phoenix_paas,
 
 config :phoenix_paas, Oban,
   repo: PhoenixPaas.Repo,
+  engine: Oban.Engines.Lite,
   prefix: false,
   notifier: Oban.Notifiers.Isolated,
   peer: Oban.Peers.Isolated,

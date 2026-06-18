@@ -13,6 +13,15 @@ defmodule PhoenixPaasWeb.AppLiveTest do
     %{server: server}
   end
 
+  test "renders new app form", %{conn: conn} do
+    {:ok, view, html} = live(conn, ~p"/apps/new")
+
+    assert has_element?(view, "#app-form")
+    assert html =~ "Register Phoenix Application"
+    assert html =~ "Systemd unit"
+    assert html =~ "Release path"
+  end
+
   test "lists apps", %{conn: conn, scope: scope, server: server} do
     TenancyFixtures.app_fixture(scope, server, %{
       name: "Trip Planner",
