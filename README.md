@@ -28,10 +28,28 @@ mix phx.server
 
 Open [http://localhost:4000](http://localhost:4000).
 
+## Real deploys (Lightsail SSH)
+
+By default dev uses `FakeRunner` (simulated logs). For real deploys:
+
+```bash
+export DEPLOY_RUNNER=ssh
+export GITHUB_TOKEN=ghp_...   # required for private repos
+mix phx.server
+```
+
+1. Register a server with its **SSH private key (PEM)**
+2. Register an app (Trip Planner defaults: `trip_planner_ia`, `/opt/trip_planner_ia`)
+3. Click **Deploy now** — clones repo, builds on the VM, migrates, restarts systemd
+
+Requires `git`, `ssh`, `scp`, and `tar` on the machine running the panel.
+
 ## Environment
 
 | Variable | Description |
 |----------|-------------|
+| `DEPLOY_RUNNER` | `fake` (default) or `ssh` for real Lightsail deploys |
+| `GITHUB_TOKEN` | GitHub PAT for cloning private repos |
 | `PHX_SERVER` | Set to start HTTP server (e.g. in production) |
 | `PORT` | HTTP port (default `4000`) |
 | `SECRET_KEY_BASE` | Required in production |

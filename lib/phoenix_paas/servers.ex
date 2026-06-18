@@ -22,4 +22,8 @@ defmodule PhoenixPaas.Servers do
   def change_server(server, attrs \\ %{}) do
     Server.changeset(server, attrs)
   end
+
+  def ssh_key_configured?(%Server{} = server) do
+    is_binary(server.ssh_private_key_encrypted) and server.ssh_private_key_encrypted != ""
+  end
 end

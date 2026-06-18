@@ -17,7 +17,8 @@ config :phoenix_paas, Oban,
   notifier: Oban.Notifiers.Isolated,
   peer: Oban.Peers.Isolated,
   queues: [deploys: 2],
-  plugins: [Oban.Plugins.Pruner]
+  plugins: [Oban.Plugins.Pruner],
+  shutdown_grace_period: :timer.minutes(15)
 
 # Configure the endpoint
 config :phoenix_paas, PhoenixPaasWeb.Endpoint,

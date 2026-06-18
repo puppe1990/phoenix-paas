@@ -23,6 +23,14 @@ end
 if config_env() != :test do
   config :phoenix_paas, PhoenixPaasWeb.Endpoint,
     http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+
+  deploy_runner =
+    case System.get_env("DEPLOY_RUNNER", "fake") do
+      "ssh" -> PhoenixPaas.Deploy.SshRunner
+      _ -> PhoenixPaas.Deploy.FakeRunner
+    end
+
+  config :phoenix_paas, :deploy_runner, deploy_runner
 end
 
 if config_env() == :prod do

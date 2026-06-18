@@ -97,6 +97,13 @@ defmodule PhoenixPaasWeb.ServerLive.Index do
                 <.input field={@form[:ssh_user]} type="text" label="SSH user" />
                 <.input field={@form[:region]} type="text" label="Region" />
                 <.input field={@form[:aws_instance_name]} type="text" label="AWS instance name" />
+                <.input
+                  field={@form[:ssh_private_key]}
+                  type="textarea"
+                  label="SSH private key (PEM)"
+                  class="col-span-full font-mono text-xs"
+                  placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
+                />
               </div>
               <div class="flex gap-2">
                 <button type="submit" class="paas-btn-primary">Save server</button>

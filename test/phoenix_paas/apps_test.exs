@@ -31,6 +31,8 @@ defmodule PhoenixPaas.AppsTest do
       assert app.server_id == server.id
       assert app.branch == "main"
       assert app.auto_deploy == true
+      assert app.systemd_unit == "trip_planner_ia"
+      assert app.release_path == "/opt/trip_planner_ia"
     end
 
     test "requires github_repo, host, and server_id", %{server: server} do

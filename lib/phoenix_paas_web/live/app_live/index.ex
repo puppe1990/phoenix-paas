@@ -103,6 +103,18 @@ defmodule PhoenixPaasWeb.AppLive.Index do
                   label="Server"
                   options={server_options(@servers)}
                 />
+                <.input
+                  field={@form[:systemd_unit]}
+                  type="text"
+                  label="Systemd unit"
+                  placeholder="trip_planner_ia"
+                />
+                <.input
+                  field={@form[:release_path]}
+                  type="text"
+                  label="Release path"
+                  placeholder="/opt/trip_planner_ia"
+                />
               </div>
               <div class="flex gap-2">
                 <button type="submit" class="paas-btn-primary">Save app</button>
