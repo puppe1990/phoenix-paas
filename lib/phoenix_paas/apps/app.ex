@@ -18,6 +18,8 @@ defmodule PhoenixPaas.Apps.App do
     field :release_path, :string
     field :webhook_secret, :string
     field :auto_deploy, :boolean, default: true
+    field :runtime_apt_packages, {:array, :string}, default: []
+    field :runtime_packages_text, :string, virtual: true
 
     belongs_to :tenant, Tenant
     belongs_to :server, Server
@@ -39,10 +41,14 @@ defmodule PhoenixPaas.Apps.App do
       :release_path,
       :webhook_secret,
       :auto_deploy,
+      :runtime_apt_packages,
+      :runtime_packages_text,
       :server_id,
       :tenant_id
     ])
     |> validate_required([:name, :slug, :github_repo, :host, :server_id, :tenant_id])
+    |> cast_runtime_packages()
+    |> put_runtime_packages_text()
     |> validate_format(:github_repo, ~r/^[^\/]+\/[^\/]+$/, message: "must be owner/repo")
     |> validate_number(:port, greater_than: 0, less_than: 65_536)
     |> unique_constraint(:slug, name: :apps_tenant_id_slug_index)
@@ -60,21 +66,6 @@ defmodule PhoenixPaas.Apps.App do
 
   def default_release_path("trip-planner"), do: "/opt/trip_planner_ia"
   def default_release_path(slug) when is_binary(slug), do: "/opt/#{release_name(slug)}"
-
-  @rapid_tools_packages ~w(ffmpeg imagemagick ghostscript zip unzip)
-
-  def runtime_apt_packages("rapid-tools"), do: @rapid_tools_packages
-  def runtime_apt_packages(_slug), do: []
-
-  def runtime_post_install_steps("rapid-tools") do
-    [
-      "if [[ -f /etc/ImageMagick-6/policy.xml ]]; then",
-      ~s(sed -i 's/<policy domain="coder" rights="none" pattern="PDF"/<policy domain="coder" rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml || true),
-      "fi"
-    ]
-  end
-
-  def runtime_post_install_steps(_slug), do: []
 
   def deploy_config(%__MODULE__{} = app) do
     release_path = app.release_path || default_release_path(app.slug)
@@ -114,5 +105,32 @@ defmodule PhoenixPaas.Apps.App do
     else
       changeset
     end
+  end
+
+  defp cast_runtime_packages(changeset) do
+    case get_change(changeset, :runtime_packages_text) do
+      nil ->
+        changeset
+
+      text ->
+        packages =
+          text
+          |> String.split(~r/[\s,]+/, trim: true)
+          |> Enum.reject(&(&1 == ""))
+
+        changeset
+        |> put_change(:runtime_apt_packages, packages)
+        |> delete_change(:runtime_packages_text)
+    end
+  end
+
+  defp put_runtime_packages_text(changeset) do
+    packages = get_field(changeset, :runtime_apt_packages) || []
+
+    put_change(
+      changeset,
+      :runtime_packages_text,
+      Enum.join(packages, "\n")
+    )
   end
 end

@@ -17,7 +17,8 @@ defmodule PhoenixPaas.Deploy.Ssh do
         with {:ok, key_path} <- write_temp_key(server),
              {:ok, work_dir} <- clone_repo(app.github_repo, branch),
              {:ok, tarball} <- create_tarball(work_dir),
-             {:ok, log} <- upload_and_build(tarball, key_path, server, app, config, sha) do
+             {:ok, log} <-
+               upload_and_build(tarball, key_path, server, app, config, sha, work_dir) do
           {:ok, log}
         end
       after
@@ -83,12 +84,14 @@ defmodule PhoenixPaas.Deploy.Ssh do
     end
   end
 
-  defp upload_and_build(tarball, key_path, server, app, config, sha) do
+  defp upload_and_build(tarball, key_path, server, app, config, sha, work_dir) do
     remote_tar = "/tmp/phoenix_paas_#{sha}.tar.gz"
     target = "#{server.ssh_user}@#{server.host_ip}"
+    runtime = PhoenixPaas.Deploy.RuntimePackages.resolve(app, work_dir)
 
     with {:ok, upload_out} <- scp(tarball, remote_tar, key_path, target),
-         {:ok, build_out} <- remote_build(remote_tar, key_path, target, server, app, config, sha) do
+         {:ok, build_out} <-
+           remote_build(remote_tar, key_path, target, server, app, config, sha, runtime) do
       log =
         [
           "==> Cloning #{app.github_repo} (branch #{app.branch})",
@@ -112,8 +115,8 @@ defmodule PhoenixPaas.Deploy.Ssh do
     end
   end
 
-  defp remote_build(remote_tar, key_path, target, server, app, config, sha) do
-    script = remote_build_script(server, app, config, sha, remote_tar)
+  defp remote_build(remote_tar, key_path, target, server, app, config, sha, runtime) do
+    script = remote_build_script(server, app, config, sha, remote_tar, runtime)
     script_path = Path.join(System.tmp_dir!(), "phoenix_paas_remote_#{sha}.sh")
 
     try do
@@ -139,12 +142,9 @@ defmodule PhoenixPaas.Deploy.Ssh do
     "'" <> String.replace(value, "'", "'\\''") <> "'"
   end
 
-  defp remote_build_script(server, app, config, sha, remote_tar) do
-    runtime_packages = PhoenixPaas.Apps.App.runtime_apt_packages(app.slug)
-    post_install = PhoenixPaas.Apps.App.runtime_post_install_steps(app.slug)
-
+  defp remote_build_script(server, _app, config, sha, remote_tar, runtime) do
     packages_install =
-      case runtime_packages do
+      case runtime.packages do
         [] ->
           ""
 
@@ -157,7 +157,7 @@ defmodule PhoenixPaas.Deploy.Ssh do
       end
 
     post_install_script =
-      case post_install do
+      case runtime.post_install do
         [] -> ""
         steps -> Enum.map_join(steps, "\n", & &1) <> "\n"
       end

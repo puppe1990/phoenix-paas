@@ -117,6 +117,18 @@ defmodule PhoenixPaasWeb.AppLive.Index do
                   placeholder="/opt/trip_planner_ia"
                 />
               </div>
+              <.input
+                field={@form[:runtime_packages_text]}
+                type="textarea"
+                label="Runtime packages (apt)"
+                placeholder="zip\nffmpeg\nimagemagick"
+                rows="4"
+              />
+              <p class="text-xs text-hd-muted">
+                Installed automatically on every deploy. You can also add
+                <span class="font-mono">.phoenix_paas/runtime-packages</span>
+                to the app repo (one package per line).
+              </p>
               <div class="flex gap-2">
                 <button type="submit" class="paas-btn-primary">Save app</button>
                 <.link navigate={~p"/apps"} class="paas-btn-secondary">Cancel</.link>

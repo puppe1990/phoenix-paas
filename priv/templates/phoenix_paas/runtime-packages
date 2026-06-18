@@ -1,0 +1,6 @@
+# One apt package per line. Installed automatically on every deploy.
+ffmpeg
+imagemagick
+ghostscript
+zip
+unzip

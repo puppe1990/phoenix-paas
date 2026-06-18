@@ -2,6 +2,7 @@ defmodule PhoenixPaasWeb.AppLive.Show do
   use PhoenixPaasWeb, :live_view
 
   alias PhoenixPaas.{Apps, Deployments}
+  alias PhoenixPaas.Deploy.RuntimePackages
 
   @poll_ms 1_000
 
@@ -23,6 +24,7 @@ defmodule PhoenixPaasWeb.AppLive.Show do
       |> assign(:show_secret?, false)
       |> assign(:latest_deployment, List.first(deployments))
       |> assign(:deploying?, active_deployment?(deployments))
+      |> assign(:runtime_packages, RuntimePackages.resolve(app).packages)
       |> schedule_poll(active_deployment?(deployments))
 
     {:ok, socket}
@@ -144,6 +146,21 @@ defmodule PhoenixPaasWeb.AppLive.Show do
             value={if @app.auto_deploy, do: "Webhook Enabled", else: "Manual Selector"}
             sub="HMAC Sha256 keys"
           />
+        </div>
+
+        <div :if={@runtime_packages != []} id="runtime-packages" class="paas-card p-4">
+          <h3 class="font-display text-xs font-semibold text-hd-text">Runtime packages</h3>
+          <p class="mt-1 text-[11px] text-hd-muted">
+            Installed automatically on every deploy via apt.
+          </p>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <span
+              :for={package <- @runtime_packages}
+              class="rounded border border-hd-border bg-hd-aside px-2 py-0.5 font-mono text-[10px] text-hd-orange"
+            >
+              {package}
+            </span>
+          </div>
         </div>
 
         <div class="paas-card space-y-3 p-4">

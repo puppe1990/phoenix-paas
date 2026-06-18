@@ -52,17 +52,18 @@ defmodule PhoenixPaas.AppsTest do
     end
   end
 
-  describe "runtime_apt_packages/1" do
-    test "rapid-tools includes media and archive packages" do
-      packages = App.runtime_apt_packages("rapid-tools")
+  describe "runtime_packages_text" do
+    test "parses newline-separated apt packages from form text" do
+      changeset =
+        App.changeset(%App{}, %{
+          "runtime_packages_text" => "zip\nffmpeg imagemagick"
+        })
 
-      assert "zip" in packages
-      assert "ffmpeg" in packages
-      assert "imagemagick" in packages
-    end
-
-    test "trip-planner has no extra runtime packages" do
-      assert App.runtime_apt_packages("trip-planner") == []
+      assert Ecto.Changeset.get_field(changeset, :runtime_apt_packages) == [
+               "zip",
+               "ffmpeg",
+               "imagemagick"
+             ]
     end
   end
 
