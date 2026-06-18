@@ -1,0 +1,16 @@
+- generic [ref=e2]:
+  - heading "Phoenix PaaS" [level=1] [ref=e6]
+  - generic [ref=e8]:
+    - banner [ref=e10]:
+      - generic [ref=e11]:
+        - heading "Register for an account" [level=1] [ref=e12]
+        - paragraph [ref=e13]:
+          - text: Already registered?
+          - link "Log in" [ref=e14] [cursor=pointer]:
+            - /url: /users/log-in
+          - text: to your account now.
+    - generic [ref=e15]:
+      - generic [ref=e17]:
+        - generic [ref=e18]: Email
+        - textbox "Email" [active] [ref=e19]
+      - button "Create an account" [ref=e20] [cursor=pointer]

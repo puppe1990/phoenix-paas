@@ -93,6 +93,8 @@ defmodule PhoenixPaasWeb do
       alias PhoenixPaasWeb.Layouts
       alias PhoenixPaasWeb.PaasShell
 
+      import PhoenixPaasWeb.AssetHelpers, only: [asset_path: 1]
+
       # Routes generation with the ~p sigil
       unquote(verified_routes())
     end

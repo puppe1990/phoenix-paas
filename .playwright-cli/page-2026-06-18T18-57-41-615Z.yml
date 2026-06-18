@@ -1,0 +1,73 @@
+- generic [ref=e119]:
+  - banner [ref=e120]:
+    - generic [ref=e124]:
+      - generic [ref=e125]:
+        - heading "Phoenix PaaS" [level=1] [ref=e126]
+        - generic [ref=e127]: MVP
+      - paragraph [ref=e128]: AWS Lightsail & GitHub Webhooks deploy pipeline for Elixir OTP nodes
+    - navigation [ref=e129]:
+      - generic [ref=e130]: test-css-1781808956@example.com
+      - link "Settings" [ref=e131] [cursor=pointer]:
+        - /url: /users/settings
+      - link "Log out" [ref=e132] [cursor=pointer]:
+        - /url: /users/log-out
+  - main [ref=e133]:
+    - generic [ref=e136]:
+      - paragraph [ref=e137]: Interactive Control Panel
+      - paragraph [ref=e138]: Manage Lightsail VMs, register Phoenix apps, and deploy OTP releases via manual trigger or GitHub webhooks.
+    - generic [ref=e139]:
+      - generic [ref=e140]:
+        - generic [ref=e145]: "AWS Lightsail: SECURE"
+        - generic [ref=e148]:
+          - generic [ref=e150]: https://
+          - generic [ref=e151]: panel.phoenixpaas.io
+          - generic [ref=e152]: /
+          - generic [ref=e153]: servers
+        - generic [ref=e157]: prod-cluster
+      - generic [ref=e158]:
+        - generic [ref=e159]:
+          - generic [ref=e160]:
+            - link "Dashboard" [ref=e161] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e163]: Dashboard
+            - link "Servers 0" [ref=e164] [cursor=pointer]:
+              - /url: /servers
+              - generic [ref=e166]: Servers
+              - generic [ref=e167]: "0"
+            - link "App Details 0" [ref=e168] [cursor=pointer]:
+              - /url: /apps
+              - generic [ref=e170]: App Details
+              - generic [ref=e171]: "0"
+          - generic [ref=e172]:
+            - link "New VM Server" [ref=e173] [cursor=pointer]:
+              - /url: /servers/new
+              - text: New VM Server
+            - link "Register App" [ref=e175] [cursor=pointer]:
+              - /url: /apps/new
+              - text: Register App
+        - generic [ref=e178]:
+          - generic [ref=e179]:
+            - generic [ref=e180]:
+              - heading "AWS Lightsail VM Units" [level=2] [ref=e181]
+              - paragraph [ref=e182]: Virtual Private Server cluster systems hosting Phoenix release application units
+            - link "New server" [ref=e183] [cursor=pointer]:
+              - /url: /servers/new
+              - text: New server
+          - generic [ref=e185]:
+            - generic [ref=e187]:
+              - heading "No registered VM instances" [level=3] [ref=e190]
+              - paragraph [ref=e191]: To begin deploying, please link your first Amazon Lightsail virtual private server instance. Map static IP boundaries to enable automatic SSH and webhook dispatch features.
+              - link "Register New Server" [ref=e192] [cursor=pointer]:
+                - /url: /servers/new
+            - link "Add AWS Lightsail VM Link next VPS node" [ref=e193] [cursor=pointer]:
+              - /url: /servers/new
+              - paragraph [ref=e196]: Add AWS Lightsail VM
+              - paragraph [ref=e197]: Link next VPS node
+  - contentinfo [ref=e198]:
+    - generic [ref=e199]:
+      - generic [ref=e200]:
+        - generic [ref=e202]: PHOENIX PAAS CLUSTER MGMT
+        - generic [ref=e203]: v0.1.0-alpha
+      - generic [ref=e204]:
+        - generic [ref=e205]: "Client Region: US-EAST"
+        - generic [ref=e206]: "Node Sync: ONLINE"

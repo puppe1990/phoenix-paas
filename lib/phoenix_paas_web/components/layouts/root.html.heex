@@ -13,8 +13,8 @@
     <.live_title default="PhoenixPaas" suffix=" · Phoenix Framework">
       {assigns[:page_title]}
     </.live_title>
-    <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
-    <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
+    <link phx-track-static rel="stylesheet" href={asset_path("/assets/css/app.css")} />
+    <script defer phx-track-static type="text/javascript" src={asset_path("/assets/js/app.js")}>
     </script>
   </head>
   <body class="bg-hd-bg text-hd-text antialiased">

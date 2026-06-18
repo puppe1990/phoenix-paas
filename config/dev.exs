@@ -1,5 +1,8 @@
 import Config
 
+# macOS: more reliable file events for Tailwind/LiveReload (avoids stale CSS).
+config :file_system, :backend, FileSystem.Backends.FSPoll
+
 config :swoosh, :api_client, false
 
 config :phoenix_paas, PhoenixPaas.Mailer, adapter: Swoosh.Adapters.Local
@@ -70,6 +73,8 @@ config :phoenix_paas, PhoenixPaasWeb.Endpoint,
     patterns: [
       # Static assets, except user uploads
       ~r"priv/static/(?!uploads/).*\.(js|css|png|jpeg|jpg|gif|svg)$"E,
+      # Rebuild Tailwind when sources change, then reload once CSS is written
+      ~r"assets/(css|js)/.*$"E,
       # Gettext translations
       ~r"priv/gettext/.*\.po$"E,
       # Router, Controllers, LiveViews and LiveComponents

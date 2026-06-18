@@ -1,0 +1,3 @@
+[      43ms] [INFO] %c📡 [info] GET /dev/mailbox
+ color: inherit; @ http://127.0.0.1:4000/phoenix/live_reload/frame:1854
+[      62ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:4000/dev/mailbox:0
