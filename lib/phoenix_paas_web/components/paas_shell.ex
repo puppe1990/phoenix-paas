@@ -35,7 +35,7 @@ defmodule PhoenixPaasWeb.PaasShell do
       </header>
 
       <main class="mx-auto w-full max-w-7xl flex-1 space-y-4 p-3 md:p-4">
-        <div class="flex gap-2.5 rounded-md border border-hd-border bg-hd-card p-3 shadow-sm">
+        <div class="flex gap-2.5 rounded-md border border-hd-border/80 bg-hd-card/80 p-3">
           <.icon name="hero-sparkles" class="mt-0.5 size-4 shrink-0 text-hd-orange" />
           <div class="space-y-0.5 text-xs">
             <p class="font-display font-semibold text-hd-orange">Interactive Control Panel</p>
@@ -45,7 +45,7 @@ defmodule PhoenixPaasWeb.PaasShell do
           </div>
         </div>
 
-        <div class="mx-auto w-full max-w-[1440px] rounded-lg border border-hd-border bg-hd-bg shadow-xl transition-all duration-300">
+        <div class="mx-auto w-full max-w-[1440px] rounded-lg border border-hd-border bg-hd-bg shadow-[0_0_0_1px_rgba(48,54,61,0.5)] transition-all duration-300">
           <.browser_chrome path={@browser_path} />
 
           <div class="relative min-h-[700px] overflow-hidden rounded-b-lg p-4 lg:p-6">
@@ -163,7 +163,7 @@ defmodule PhoenixPaasWeb.PaasShell do
       navigate={@navigate}
       class={[
         "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold tracking-wide transition-all",
-        @active? && "border border-hd-border bg-hd-card text-hd-orange shadow-sm",
+        @active? && "border border-hd-border bg-hd-card text-hd-orange",
         !@active? && "text-hd-muted hover:text-hd-text"
       ]}
     >

@@ -88,7 +88,7 @@ defmodule PhoenixPaasWeb.PaasComponents do
 
   def metric_card(assigns) do
     ~H"""
-    <div class="paas-card group flex cursor-pointer items-center justify-between p-4 shadow-sm transition-all hover:border-hd-orange/40">
+    <div class="paas-card group flex cursor-pointer items-center justify-between p-4 transition-all hover:border-hd-orange/40">
       <div class="space-y-0.5">
         <p class="block font-mono text-[10px] font-semibold uppercase tracking-wider text-hd-muted">
           {@title}
@@ -101,7 +101,7 @@ defmodule PhoenixPaasWeb.PaasComponents do
       <div class="flex size-9 items-center justify-center rounded border border-hd-border bg-hd-aside transition-colors">
         <.icon
           name={@icon}
-          class="size-4.5 text-hd-orange transition-transform group-hover:scale-110"
+          class="size-5 text-hd-orange transition-transform group-hover:scale-110"
         />
       </div>
     </div>
@@ -122,7 +122,7 @@ defmodule PhoenixPaasWeb.PaasComponents do
     ~H"""
     <div
       id="deploy-terminal"
-      class="overflow-hidden rounded-md border border-hd-border bg-hd-bg font-mono text-[11px] text-hd-text shadow-sm"
+      class="overflow-hidden rounded-md border border-hd-border bg-hd-bg font-mono text-[11px] text-hd-text"
     >
       <div class="flex items-center justify-between border-b border-hd-border bg-hd-aside px-3 py-1.5">
         <div class="flex items-center gap-1.5">

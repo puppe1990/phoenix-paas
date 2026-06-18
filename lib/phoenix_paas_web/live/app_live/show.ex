@@ -200,7 +200,7 @@ defmodule PhoenixPaasWeb.AppLive.Show do
           <.deploy_terminal deployment={@latest_deployment} active?={@deploying?} />
         </div>
 
-        <div class="overflow-hidden rounded-md border border-hd-border bg-hd-card shadow-sm">
+        <div class="overflow-hidden rounded-md border border-hd-border bg-hd-card">
           <div class="border-b border-hd-border bg-hd-aside px-4 py-2">
             <span class="font-display text-xs font-semibold text-hd-text">
               Deployments Version History

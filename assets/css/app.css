@@ -184,3 +184,156 @@ body {
 .paas-table tr:hover td {
   background: color-mix(in oklch, var(--color-hd-aside) 60%, transparent);
 }
+
+/* core_components — dark theme (replaces daisyUI) */
+.label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-hd-muted);
+}
+
+.fieldset {
+  margin-bottom: 0.5rem;
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  border-radius: 0.375rem;
+  border: 1px solid var(--color-hd-border);
+  background: var(--color-hd-aside);
+  color: var(--color-hd-text);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  border-color: var(--color-hd-orange);
+}
+
+.input-error,
+.select-error,
+.textarea-error {
+  border-color: #f87171;
+}
+
+.textarea {
+  min-height: 6rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.checkbox {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--color-hd-orange);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.375rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+}
+
+.btn-primary {
+  background: var(--color-hd-orange);
+  color: var(--color-hd-bg);
+}
+
+.btn-primary:hover {
+  background: var(--color-hd-orange-dark);
+}
+
+.btn-soft {
+  background: color-mix(in oklch, var(--color-hd-orange) 12%, var(--color-hd-card));
+  color: var(--color-hd-orange);
+  border-color: var(--color-hd-border);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-hd-text);
+  border-color: transparent;
+}
+
+.btn-ghost:hover {
+  background: var(--color-hd-card);
+}
+
+.btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.text-error {
+  color: #f87171;
+}
+
+.text-base-content {
+  color: var(--color-hd-text);
+}
+
+.text-base-content\/70 {
+  color: color-mix(in oklch, var(--color-hd-text) 70%, transparent);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table-zebra tbody tr:nth-child(even) {
+  background: color-mix(in oklch, var(--color-hd-aside) 40%, transparent);
+}
+
+.toast {
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-hd-border);
+  background: var(--color-hd-card);
+  color: var(--color-hd-text);
+  padding: 0.75rem 1rem;
+  box-shadow: 0 8px 24px color-mix(in oklch, var(--color-hd-bg) 60%, transparent);
+}
+
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid color-mix(in oklch, var(--color-hd-orange) 35%, transparent);
+  background: color-mix(in oklch, var(--color-hd-orange) 8%, var(--color-hd-card));
+  color: var(--color-hd-orange);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+}
+
+.link {
+  color: var(--color-hd-orange);
+  text-decoration: none;
+}
+
+.link:hover {
+  color: var(--color-hd-orange-dark);
+  text-decoration: underline;
+}
+
+html {
+  color-scheme: dark;
+}

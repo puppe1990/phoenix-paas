@@ -31,7 +31,7 @@ defmodule PhoenixPaasWeb.DashboardLive do
       app_count={@app_count}
     >
       <div id="dashboard" class="space-y-4">
-        <div class="relative overflow-hidden rounded-md border border-hd-border bg-hd-card p-5 shadow-sm">
+        <div class="relative overflow-hidden rounded-md border border-hd-border bg-hd-card p-5">
           <.icon
             name="hero-fire"
             class="pointer-events-none absolute -right-4 -top-4 size-48 rotate-12 fill-current text-hd-orange/5"
@@ -85,7 +85,7 @@ defmodule PhoenixPaasWeb.DashboardLive do
           </.link>
         </div>
 
-        <div class="overflow-hidden rounded-md border border-hd-border bg-hd-card shadow-sm">
+        <div class="overflow-hidden rounded-md border border-hd-border bg-hd-card">
           <div class="flex items-center justify-between border-b border-hd-border bg-hd-aside px-4 py-2.5">
             <div class="space-y-0.5">
               <h3 class="font-display text-xs font-semibold text-hd-text">
