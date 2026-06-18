@@ -77,6 +77,7 @@ defmodule PhoenixPaasWeb.AppLive.Show do
     ~H"""
     <Layouts.app
       flash={@flash}
+      current_scope={@current_scope}
       active_tab={@active_tab}
       browser_path={@browser_path}
       server_count={@server_count}

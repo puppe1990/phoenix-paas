@@ -10,12 +10,13 @@ defmodule PhoenixPaasWeb.PaasShell do
   attr :server_count, :integer, default: 0
   attr :app_count, :integer, default: 0
   attr :browser_path, :string, default: "dashboard"
+  attr :current_scope, :map, default: nil
   slot :inner_block, required: true
 
   def shell(assigns) do
     ~H"""
     <div class="flex min-h-screen flex-col bg-hd-bg text-hd-text antialiased">
-      <header class="sticky top-0 z-40 flex flex-wrap items-center justify-between border-b border-hd-border bg-hd-aside px-4 py-3">
+      <header class="sticky top-0 z-40 flex flex-wrap items-center justify-between gap-3 border-b border-hd-border bg-hd-aside px-4 py-3">
         <div class="flex items-center gap-2.5">
           <div class="flex size-9 items-center justify-center rounded-lg border border-hd-border bg-hd-card">
             <.icon name="hero-fire" class="size-5 text-hd-orange" />
@@ -32,6 +33,27 @@ defmodule PhoenixPaasWeb.PaasShell do
             </p>
           </div>
         </div>
+
+        <nav class="flex flex-wrap items-center gap-2 text-xs font-medium">
+          <%= if @current_scope do %>
+            <span class="hidden rounded-md border border-hd-border bg-hd-card px-2.5 py-1.5 text-hd-muted sm:inline">
+              {@current_scope.user.email}
+            </span>
+            <.link href={~p"/users/settings"} class="paas-btn-secondary px-3 py-1.5">
+              Settings
+            </.link>
+            <.link href={~p"/users/log-out"} method="delete" class="paas-btn-secondary px-3 py-1.5">
+              Log out
+            </.link>
+          <% else %>
+            <.link href={~p"/users/log-in"} class="paas-btn-secondary px-3 py-1.5">
+              Log in
+            </.link>
+            <.link href={~p"/users/register"} class="paas-btn-primary px-3 py-1.5">
+              Register
+            </.link>
+          <% end %>
+        </nav>
       </header>
 
       <main class="mx-auto w-full max-w-7xl flex-1 space-y-4 p-3 md:p-4">

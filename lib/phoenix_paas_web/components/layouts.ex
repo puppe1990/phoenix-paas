@@ -41,6 +41,7 @@ defmodule PhoenixPaasWeb.Layouts do
         browser_path={@browser_path}
         server_count={@server_count}
         app_count={@app_count}
+        current_scope={@current_scope}
       >
         {render_slot(@inner_block)}
       </PaasShell.shell>

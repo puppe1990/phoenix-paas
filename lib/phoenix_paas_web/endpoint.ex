@@ -25,7 +25,8 @@ defmodule PhoenixPaasWeb.Endpoint do
     from: :phoenix_paas,
     gzip: not code_reloading?,
     only: PhoenixPaasWeb.static_paths(),
-    raise_on_missing_only: code_reloading?
+    raise_on_missing_only: code_reloading?,
+    cache_control_for_etags: if(code_reloading?, do: "no-cache, must-revalidate", else: "public")
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
