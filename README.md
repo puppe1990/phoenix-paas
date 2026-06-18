@@ -4,6 +4,8 @@ Control panel for deploying Phoenix/Elixir apps to **AWS Lightsail** via GitHub 
 
 Register Lightsail VMs, link GitHub repos, trigger manual deploys or push-to-deploy, and watch OTP release builds in a live terminal.
 
+![Phoenix PaaS dashboard — Trip Planner deployed on Lightsail](docs/images/dashboard.jpg)
+
 ## Features
 
 - **Servers** — register Lightsail VMs (IP, region, SSH user)
@@ -11,6 +13,7 @@ Register Lightsail VMs, link GitHub repos, trigger manual deploys or push-to-dep
 - **Deployments** — queued → running → success/failed, with build logs
 - **GitHub webhooks** — HMAC-verified `POST /webhooks/github`
 - **Oban queue** — background deploy worker with Mox-tested runner behaviour
+- **SSH deploys** — clone, build OTP release on the VM, migrate, restart systemd
 
 ## Requirements
 
@@ -42,6 +45,12 @@ mix phx.server
 2. Register an app (Trip Planner defaults: `trip_planner_ia`, `/opt/trip_planner_ia`)
 3. Click **Deploy now** — clones repo, builds on the VM, migrates, restarts systemd
 
+One-off test script (no UI):
+
+```bash
+DEPLOY_RUNNER=ssh mix run --no-start priv/scripts/run_deploy_test.exs
+```
+
 Requires `git`, `ssh`, `scp`, and `tar` on the machine running the panel.
 
 ## Environment
@@ -65,7 +74,7 @@ mix precommit
 ## Related
 
 - [paas-example](https://github.com/puppe1990/paas-example) — React UI mock of this panel
-- [trip-planner-ia-phx](https://github.com/puppe1990/trip-planner-ia-phx) — first production app target
+- [trip-planner-ia-phx](https://github.com/puppe1990/trip-planner-ia-phx) — first production app ([trip.gestaobem.com](https://trip.gestaobem.com))
 
 ## License
 
