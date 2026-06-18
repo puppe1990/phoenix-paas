@@ -114,14 +114,29 @@ defmodule PhoenixPaas.Deploy.Ssh do
 
   defp remote_build(remote_tar, key_path, target, server, config, sha) do
     script = remote_build_script(server, config, sha, remote_tar)
+    script_path = Path.join(System.tmp_dir!(), "phoenix_paas_remote_#{sha}.sh")
 
-    case System.cmd("ssh", ssh_base(key_path, target) ++ ["bash", "-s"],
-           stderr_to_stdout: true,
-           input: script
-         ) do
-      {output, 0} -> {:ok, output}
-      {output, _code} -> {:error, "remote build failed:\n#{output}"}
+    try do
+      :ok = File.write!(script_path, script)
+
+      ssh_args =
+        (ssh_base(key_path, target) ++ ["bash", "-s"])
+        |> Enum.map(&shell_escape/1)
+        |> Enum.join(" ")
+
+      case System.cmd("bash", ["-c", "ssh #{ssh_args} < #{shell_escape(script_path)}"],
+             stderr_to_stdout: true
+           ) do
+        {output, 0} -> {:ok, output}
+        {output, _code} -> {:error, "remote build failed:\n#{output}"}
+      end
+    after
+      File.rm(script_path)
     end
+  end
+
+  defp shell_escape(value) when is_binary(value) do
+    "'" <> String.replace(value, "'", "'\\''") <> "'"
   end
 
   defp remote_build_script(server, config, sha, remote_tar) do
@@ -164,6 +179,9 @@ defmodule PhoenixPaas.Deploy.Ssh do
     mix local.rebar --force
     mix deps.get --only prod
 
+    log "Compiling application"
+    mix compile
+
     log "Compiling assets"
     mix assets.setup
     mix assets.deploy
@@ -171,7 +189,7 @@ defmodule PhoenixPaas.Deploy.Ssh do
     log "Building release #{config.release_name}"
     mix release
 
-    RELEASE_DIR="#{config.release_path}/releases/#{sha}"
+    RELEASE_DIR="#{config.release_path}/releases/build"
     sudo mkdir -p "$RELEASE_DIR"
     sudo rm -rf "${RELEASE_DIR:?}"/*
     sudo cp -a "_build/prod/rel/#{config.release_name}/." "$RELEASE_DIR/"
@@ -222,6 +240,10 @@ defmodule PhoenixPaas.Deploy.Ssh do
       "StrictHostKeyChecking=accept-new",
       "-o",
       "BatchMode=yes",
+      "-o",
+      "ServerAliveInterval=30",
+      "-o",
+      "ServerAliveCountMax=120",
       target
     ]
   end
@@ -233,7 +255,11 @@ defmodule PhoenixPaas.Deploy.Ssh do
       "-o",
       "StrictHostKeyChecking=accept-new",
       "-o",
-      "BatchMode=yes"
+      "BatchMode=yes",
+      "-o",
+      "ServerAliveInterval=30",
+      "-o",
+      "ServerAliveCountMax=120"
     ]
   end
 
