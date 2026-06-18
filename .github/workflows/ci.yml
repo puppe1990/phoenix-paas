@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    env:
+      MIX_ENV: test
+      SECRET_KEY_BASE: ci_secret_key_base_for_compile_only_32chars_min
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.19"
+          otp-version: "28"
+
+      - name: Install Elixir dependencies
+        run: mix deps.get
+
+      - name: Check Elixir formatting
+        run: mix format --check-formatted
+
+      - name: Lint (Credo)
+        run: mix credo suggest --min-priority higher
+
+      - name: Run tests
+        run: mix test --exclude integration
+
+      - name: Compile production
+        run: MIX_ENV=prod mix compile --warnings-as-errors
+        env:
+          SECRET_KEY_BASE: ci_secret_key_base_for_compile_only_32chars_min

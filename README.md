@@ -1,0 +1,54 @@
+# Phoenix PaaS
+
+Control panel for deploying Phoenix/Elixir apps to **AWS Lightsail** via GitHub webhooks.
+
+Register Lightsail VMs, link GitHub repos, trigger manual deploys or push-to-deploy, and watch OTP release builds in a live terminal.
+
+## Features
+
+- **Servers** — register Lightsail VMs (IP, region, SSH user)
+- **Apps** — link a GitHub repo, host, branch, and target server
+- **Deployments** — queued → running → success/failed, with build logs
+- **GitHub webhooks** — HMAC-verified `POST /webhooks/github`
+- **Oban queue** — background deploy worker with Mox-tested runner behaviour
+
+## Requirements
+
+- Elixir 1.15+ / OTP 26+
+- SQLite (dev/test) — no external DB needed to get started
+
+## Quick start
+
+```bash
+git clone https://github.com/puppe1990/phoenix-paas.git
+cd phoenix-paas
+mix setup
+mix phx.server
+```
+
+Open [http://localhost:4000](http://localhost:4000).
+
+## Environment
+
+| Variable | Description |
+|----------|-------------|
+| `PHX_SERVER` | Set to start HTTP server (e.g. in production) |
+| `PORT` | HTTP port (default `4000`) |
+| `SECRET_KEY_BASE` | Required in production |
+| `DATABASE_PATH` | SQLite path in production |
+
+## Tests
+
+```bash
+mix test
+mix precommit
+```
+
+## Related
+
+- [paas-example](https://github.com/puppe1990/paas-example) — React UI mock of this panel
+- [trip-planner-ia-phx](https://github.com/puppe1990/trip-planner-ia-phx) — first production app target
+
+## License
+
+MIT
