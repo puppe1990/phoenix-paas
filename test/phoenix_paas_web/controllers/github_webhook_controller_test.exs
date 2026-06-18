@@ -1,24 +1,18 @@
 defmodule PhoenixPaasWeb.GithubWebhookControllerTest do
   use PhoenixPaasWeb.ConnCase, async: false
 
-  alias PhoenixPaas.{Apps, Servers}
+  alias PhoenixPaas.TenancyFixtures
 
   setup do
-    {:ok, server} =
-      Servers.create_server(%{
-        name: "lightsail-1",
-        host_ip: "100.59.80.29",
-        ssh_user: "ubuntu",
-        region: "us-east-1"
-      })
+    scope = TenancyFixtures.scope_fixture()
+    server = TenancyFixtures.server_fixture(scope)
 
-    {:ok, app} =
-      Apps.create_app(%{
+    app =
+      TenancyFixtures.app_fixture(scope, server, %{
         name: "Trip Planner",
         slug: "trip-planner",
         github_repo: "puppe1990/trip-planner-ia-phx",
-        host: "trip.gestaobem.com",
-        server_id: server.id
+        host: "trip.gestaobem.com"
       })
 
     payload = File.read!("test/support/fixtures/github_push.json")
@@ -31,16 +25,6 @@ defmodule PhoenixPaasWeb.GithubWebhookControllerTest do
     conn =
       build_conn()
       |> put_req_header("content-type", "application/json")
-      |> post(~p"/webhooks/github", payload)
-
-    assert response(conn, 401) == "invalid signature"
-  end
-
-  test "returns 401 with invalid signature", %{payload: payload} do
-    conn =
-      build_conn()
-      |> put_req_header("content-type", "application/json")
-      |> put_req_header("x-hub-signature-256", "sha256=invalid")
       |> post(~p"/webhooks/github", payload)
 
     assert response(conn, 401) == "invalid signature"

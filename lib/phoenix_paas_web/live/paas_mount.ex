@@ -5,8 +5,9 @@ defmodule PhoenixPaasWeb.PaasMount do
   alias PhoenixPaas.{Apps, Servers}
 
   def on_mount(:default, _params, _session, socket) do
-    servers = Servers.list_servers()
-    apps = Apps.list_apps()
+    scope = socket.assigns.current_scope
+    servers = Servers.list_servers(scope)
+    apps = Apps.list_apps(scope)
 
     {:cont,
      socket

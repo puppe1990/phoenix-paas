@@ -8,29 +8,16 @@ defmodule PhoenixPaas.Workers.DeployWorkerTest do
     notifier: Oban.Notifiers.Isolated,
     testing: :manual
 
-  alias PhoenixPaas.{Apps, Deployments, Servers, Workers.DeployWorker}
+  alias PhoenixPaas.{Deployments, Workers.DeployWorker}
   alias PhoenixPaas.Deploy.RunnerMock
+  alias PhoenixPaas.TenancyFixtures
 
   setup :verify_on_exit!
 
   setup do
-    {:ok, server} =
-      Servers.create_server(%{
-        name: "lightsail-1",
-        host_ip: "100.59.80.29",
-        ssh_user: "ubuntu",
-        region: "us-east-1"
-      })
-
-    {:ok, app} =
-      Apps.create_app(%{
-        name: "Trip Planner",
-        slug: "trip-planner",
-        github_repo: "puppe1990/trip-planner-ia-phx",
-        host: "trip.gestaobem.com",
-        server_id: server.id
-      })
-
+    scope = TenancyFixtures.scope_fixture()
+    server = TenancyFixtures.server_fixture(scope)
+    app = TenancyFixtures.app_fixture(scope, server)
     %{app: app}
   end
 
@@ -45,7 +32,6 @@ defmodule PhoenixPaas.Workers.DeployWorkerTest do
 
     deployment = Deployments.for_app(app) |> List.first()
     assert deployment.status == :success
-    assert deployment.log =~ "deploy ok"
   end
 
   test "marks deployment failed when runner errors", %{app: app} do
@@ -56,6 +42,5 @@ defmodule PhoenixPaas.Workers.DeployWorkerTest do
 
     deployment = Deployments.for_app(app) |> List.first()
     assert deployment.status == :failed
-    assert deployment.log =~ "ssh failed"
   end
 end

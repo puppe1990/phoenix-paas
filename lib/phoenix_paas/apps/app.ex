@@ -3,6 +3,7 @@ defmodule PhoenixPaas.Apps.App do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias PhoenixPaas.Accounts.Tenant
   alias PhoenixPaas.Apps.AppEnvVar
   alias PhoenixPaas.Servers.Server
 
@@ -18,6 +19,7 @@ defmodule PhoenixPaas.Apps.App do
     field :webhook_secret, :string
     field :auto_deploy, :boolean, default: true
 
+    belongs_to :tenant, Tenant
     belongs_to :server, Server
     has_many :env_vars, AppEnvVar
 
@@ -37,13 +39,14 @@ defmodule PhoenixPaas.Apps.App do
       :release_path,
       :webhook_secret,
       :auto_deploy,
-      :server_id
+      :server_id,
+      :tenant_id
     ])
-    |> validate_required([:name, :slug, :github_repo, :host, :server_id])
+    |> validate_required([:name, :slug, :github_repo, :host, :server_id, :tenant_id])
     |> validate_format(:github_repo, ~r/^[^\/]+\/[^\/]+$/, message: "must be owner/repo")
     |> validate_number(:port, greater_than: 0, less_than: 65_536)
-    |> unique_constraint(:slug)
-    |> unique_constraint(:github_repo)
+    |> unique_constraint(:slug, name: :apps_tenant_id_slug_index)
+    |> unique_constraint(:github_repo, name: :apps_tenant_id_github_repo_index)
     |> foreign_key_constraint(:server_id)
     |> put_default_webhook_secret()
     |> put_deploy_defaults()

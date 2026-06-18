@@ -9,8 +9,7 @@ defmodule PhoenixPaasWeb.GithubWebhookController do
 
     with {:ok, payload} <- decode_payload(raw_body),
          repo when is_binary(repo) <- Github.repo_full_name(payload),
-         %{} = app <- Apps.get_app_by_repo(repo) || :not_found,
-         :ok <- Github.verify_signature(raw_body, signature, app.webhook_secret),
+         %{} = app <- find_app_by_repo_and_signature(repo, raw_body, signature),
          {:ok, attrs} <- normalize_push_attrs(payload, app),
          true <- app.auto_deploy,
          {:ok, _job} <- Deployments.enqueue(app, attrs) do
@@ -30,6 +29,26 @@ defmodule PhoenixPaasWeb.GithubWebhookController do
 
       {:error, _} ->
         send_resp(conn, :bad_request, "invalid payload")
+    end
+  end
+
+  defp find_app_by_repo_and_signature(repo, raw_body, signature) do
+    apps = Apps.list_apps_by_repo(repo)
+
+    cond do
+      apps == [] ->
+        :not_found
+
+      signature in [nil, ""] ->
+        :error
+
+      true ->
+        Enum.find_value(apps, :error, fn app ->
+          case Github.verify_signature(raw_body, signature, app.webhook_secret) do
+            :ok -> app
+            :error -> nil
+          end
+        end)
     end
   end
 

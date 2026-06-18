@@ -11,7 +11,7 @@ defmodule PhoenixPaasWeb.ServerLive.Index do
      |> assign(:page_title, "Servers")
      |> assign(:active_tab, :servers)
      |> assign(:browser_path, "servers")
-     |> stream(:servers, Servers.list_servers())}
+     |> stream(:servers, Servers.list_servers(socket.assigns.current_scope))}
   end
 
   @impl true
@@ -44,7 +44,7 @@ defmodule PhoenixPaasWeb.ServerLive.Index do
   end
 
   def handle_event("save", %{"server" => server_params}, socket) do
-    case Servers.create_server(server_params) do
+    case Servers.create_server(socket.assigns.current_scope, server_params) do
       {:ok, server} ->
         {:noreply,
          socket

@@ -34,16 +34,16 @@ if config_env() != :test do
 end
 
 if config_env() == :prod do
-  database_path =
-    System.get_env("DATABASE_PATH") ||
-      raise """
-      environment variable DATABASE_PATH is missing.
-      For example: /etc/phoenix_paas/phoenix_paas.db
-      """
+  config :phoenix_paas, PhoenixPaas.Repo, PhoenixPaas.Config.Turso.repo_config()
 
-  config :phoenix_paas, PhoenixPaas.Repo,
-    database: database_path,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "5")
+  cloak_key =
+    System.get_env("CLOAK_KEY") ||
+      raise "environment variable CLOAK_KEY is missing (32-byte base64 key)"
+
+  config :phoenix_paas, PhoenixPaas.Vault,
+    ciphers: [
+      default: {Cloak.Ciphers.AES.GCM, tag: "v1", key: Base.decode64!(cloak_key)}
+    ]
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you

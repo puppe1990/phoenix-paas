@@ -11,8 +11,8 @@ defmodule PhoenixPaasWeb.AppLive.Index do
      |> assign(:page_title, "Apps")
      |> assign(:active_tab, :apps)
      |> assign(:browser_path, "apps")
-     |> assign(:servers, Servers.list_servers())
-     |> stream(:apps, Apps.list_apps())}
+     |> assign(:servers, Servers.list_servers(socket.assigns.current_scope))
+     |> stream(:apps, Apps.list_apps(socket.assigns.current_scope))}
   end
 
   @impl true
@@ -45,9 +45,9 @@ defmodule PhoenixPaasWeb.AppLive.Index do
   end
 
   def handle_event("save", %{"app" => app_params}, socket) do
-    case Apps.create_app(app_params) do
+    case Apps.create_app(socket.assigns.current_scope, app_params) do
       {:ok, app} ->
-        app = Apps.get_app!(app.id)
+        app = Apps.get_app!(socket.assigns.current_scope, app.id)
 
         {:noreply,
          socket

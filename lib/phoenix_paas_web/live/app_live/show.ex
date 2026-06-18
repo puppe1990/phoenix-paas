@@ -7,8 +7,9 @@ defmodule PhoenixPaasWeb.AppLive.Show do
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
-    app = Apps.get_app!(id)
-    deployments = Deployments.for_app(app)
+    scope = socket.assigns.current_scope
+    app = Apps.get_app!(scope, id)
+    deployments = Deployments.for_app(scope, app)
 
     socket =
       socket
@@ -16,7 +17,7 @@ defmodule PhoenixPaasWeb.AppLive.Show do
       |> assign(:active_tab, :apps)
       |> assign(:browser_path, "apps/#{app.slug}")
       |> assign(:app, app)
-      |> assign(:apps, Apps.list_apps())
+      |> assign(:apps, Apps.list_apps(scope))
       |> assign(:deployments, deployments)
       |> assign(:webhook_url, webhook_url())
       |> assign(:show_secret?, false)
@@ -29,9 +30,13 @@ defmodule PhoenixPaasWeb.AppLive.Show do
 
   @impl true
   def handle_event("deploy", _params, socket) do
-    case Deployments.enqueue(socket.assigns.app, %{git_sha: "manual", triggered_by: "manual"}) do
+    case Deployments.enqueue(socket.assigns.current_scope, socket.assigns.app, %{
+           git_sha: "manual",
+           triggered_by: "manual"
+         }) do
       {:ok, _job} ->
-        deployments = Deployments.for_app(socket.assigns.app)
+        deployments =
+          Deployments.for_app(socket.assigns.current_scope, socket.assigns.app)
 
         {:noreply,
          socket
@@ -56,7 +61,7 @@ defmodule PhoenixPaasWeb.AppLive.Show do
 
   @impl true
   def handle_info(:poll_deployments, socket) do
-    deployments = Deployments.for_app(socket.assigns.app)
+    deployments = Deployments.for_app(socket.assigns.current_scope, socket.assigns.app)
     deploying? = active_deployment?(deployments)
 
     {:noreply,

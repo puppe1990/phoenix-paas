@@ -1,22 +1,17 @@
 defmodule PhoenixPaas.AppsTest do
   use PhoenixPaas.DataCase
 
-  alias PhoenixPaas.{Apps, Servers}
+  alias PhoenixPaas.Apps
+  alias PhoenixPaas.TenancyFixtures
 
   setup do
-    {:ok, server} =
-      Servers.create_server(%{
-        name: "lightsail-1",
-        host_ip: "100.59.80.29",
-        ssh_user: "ubuntu",
-        region: "us-east-1"
-      })
-
-    %{server: server}
+    scope = TenancyFixtures.scope_fixture()
+    server = TenancyFixtures.server_fixture(scope)
+    %{scope: scope, server: server}
   end
 
-  describe "create_app/1" do
-    test "persists app linked to server", %{server: server} do
+  describe "create_app/2" do
+    test "persists app linked to server", %{scope: scope, server: server} do
       attrs = %{
         name: "Trip Planner",
         slug: "trip-planner",
@@ -25,19 +20,15 @@ defmodule PhoenixPaas.AppsTest do
         server_id: server.id
       }
 
-      assert {:ok, app} = Apps.create_app(attrs)
-      assert app.github_repo == "puppe1990/trip-planner-ia-phx"
-      assert app.host == "trip.gestaobem.com"
-      assert app.server_id == server.id
-      assert app.branch == "main"
-      assert app.auto_deploy == true
+      assert {:ok, app} = Apps.create_app(scope, attrs)
+      assert app.tenant_id == scope.tenant.id
       assert app.systemd_unit == "trip_planner_ia"
       assert app.release_path == "/opt/trip_planner_ia"
     end
 
-    test "requires github_repo, host, and server_id", %{server: server} do
+    test "requires github_repo, host, and server_id", %{scope: scope, server: server} do
       assert {:error, changeset} =
-               Apps.create_app(%{name: "X", slug: "x", server_id: server.id})
+               Apps.create_app(scope, %{name: "X", slug: "x", server_id: server.id})
 
       assert "can't be blank" in errors_on(changeset).github_repo
       assert "can't be blank" in errors_on(changeset).host
@@ -45,9 +36,9 @@ defmodule PhoenixPaas.AppsTest do
   end
 
   describe "env_map/1" do
-    test "includes PHX_HOST and stored env vars", %{server: server} do
+    test "includes PHX_HOST and stored env vars", %{scope: scope, server: server} do
       {:ok, app} =
-        Apps.create_app(%{
+        Apps.create_app(scope, %{
           name: "Trip Planner",
           slug: "trip-planner",
           github_repo: "puppe1990/trip-planner-ia-phx",

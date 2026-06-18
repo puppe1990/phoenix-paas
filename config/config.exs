@@ -7,6 +7,19 @@
 # General application configuration
 import Config
 
+config :phoenix_paas, :scopes,
+  user: [
+    default: true,
+    module: PhoenixPaas.Accounts.Scope,
+    assign_key: :current_scope,
+    access_path: [:user, :id],
+    schema_key: :user_id,
+    schema_type: :id,
+    schema_table: :users,
+    test_data_fixture: PhoenixPaas.AccountsFixtures,
+    test_setup_helper: :register_and_log_in_user
+  ]
+
 config :phoenix_paas,
   ecto_repos: [PhoenixPaas.Repo],
   generators: [timestamp_type: :utc_datetime]

@@ -1,20 +1,18 @@
 defmodule PhoenixPaas.Deploy.SshRunnerTest do
   use PhoenixPaas.DataCase, async: false
 
-  alias PhoenixPaas.{Apps, Deployments, Servers}
+  alias PhoenixPaas.{Apps, Deployments}
   alias PhoenixPaas.Deploy.SshRunner
+  alias PhoenixPaas.TenancyFixtures
 
   setup do
-    {:ok, server} =
-      Servers.create_server(%{
-        name: "lightsail-1",
-        host_ip: "100.59.80.29",
-        ssh_user: "ubuntu",
-        region: "us-east-1"
-      })
+    scope = TenancyFixtures.scope_fixture()
+
+    server =
+      TenancyFixtures.server_fixture(scope, %{name: "lightsail-1", host_ip: "100.59.80.29"})
 
     {:ok, app} =
-      Apps.create_app(%{
+      Apps.create_app(scope, %{
         name: "Trip Planner",
         slug: "trip-planner",
         github_repo: "puppe1990/trip-planner-ia-phx",
@@ -23,7 +21,6 @@ defmodule PhoenixPaas.Deploy.SshRunnerTest do
       })
 
     {:ok, deployment} = Deployments.create_deployment(app, %{git_sha: "manual"})
-
     %{deployment: deployment}
   end
 

@@ -1,11 +1,5 @@
-# Script for populating the database. You can run it as:
-#
-#     mix run priv/repo/seeds.exs
-#
-# Inside the script, you can read and write to any of your
-# repositories directly:
-#
-#     PhoenixPaas.Repo.insert!(%PhoenixPaas.SomeSchema{})
-#
-# We recommend using the bang functions (`insert!`, `update!`
-# and so on) as they will fail if something goes wrong.
+alias PhoenixPaas.Seeds
+
+{:ok, %{user: user, scope: scope}} = Seeds.run()
+
+IO.puts("Seeded #{user.email} → tenant #{scope.tenant.slug} with Trip Planner app")

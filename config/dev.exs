@@ -1,5 +1,9 @@
 import Config
 
+config :swoosh, :api_client, false
+
+config :phoenix_paas, PhoenixPaas.Mailer, adapter: Swoosh.Adapters.Local
+
 config :phoenix_paas, PhoenixPaas.Vault,
   ciphers: [
     default: {

@@ -3,6 +3,7 @@ defmodule PhoenixPaas.Servers.Server do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias PhoenixPaas.Accounts.Tenant
   alias PhoenixPaas.Encrypted
 
   schema "servers" do
@@ -13,6 +14,8 @@ defmodule PhoenixPaas.Servers.Server do
     field :ssh_private_key_encrypted, Encrypted.Binary
     field :ssh_private_key, :string, virtual: true
     field :aws_instance_name, :string
+
+    belongs_to :tenant, Tenant
 
     timestamps(type: :utc_datetime)
   end
@@ -25,13 +28,14 @@ defmodule PhoenixPaas.Servers.Server do
       :ssh_user,
       :region,
       :ssh_private_key,
-      :aws_instance_name
+      :aws_instance_name,
+      :tenant_id
     ])
-    |> validate_required([:name, :host_ip, :ssh_user, :region])
+    |> validate_required([:name, :host_ip, :ssh_user, :region, :tenant_id])
     |> validate_length(:name, min: 1, max: 160)
     |> validate_ipv4(:host_ip)
     |> maybe_put_ssh_key()
-    |> unique_constraint(:name)
+    |> unique_constraint(:name, name: :servers_tenant_id_name_index)
   end
 
   defp maybe_put_ssh_key(changeset) do

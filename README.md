@@ -53,6 +53,18 @@ DEPLOY_RUNNER=ssh mix run --no-start priv/scripts/run_deploy_test.exs
 
 Requires `git`, `ssh`, `scp`, and `tar` on the machine running the panel.
 
+## Authentication & multi-tenant
+
+Panel routes require login. Each user belongs to a tenant; servers and apps are isolated by `tenant_id`.
+
+Seed the owner account and Trip Planner deploy test:
+
+```bash
+SEED_USER_PASSWORD='your-secure-password' mix run priv/repo/seeds.exs
+```
+
+This creates `matheus.puppe@gmail.com` as owner of the **Gestão Bem** tenant with the Trip Planner app pre-linked.
+
 ## Environment
 
 | Variable | Description |
@@ -62,7 +74,12 @@ Requires `git`, `ssh`, `scp`, and `tar` on the machine running the panel.
 | `PHX_SERVER` | Set to start HTTP server (e.g. in production) |
 | `PORT` | HTTP port (default `4000`) |
 | `SECRET_KEY_BASE` | Required in production |
-| `DATABASE_PATH` | SQLite path in production |
+| `CLOAK_KEY` | 32-byte base64 key for SSH private key encryption (production) |
+| `TURSO_DATABASE_URL` | `libsql://...` Turso database URL (production) |
+| `TURSO_AUTH_TOKEN` | Turso auth token (production) |
+| `DATABASE_PATH` | Fallback SQLite path when Turso URL is not set |
+| `SEED_USER_PASSWORD` | Password for the seeded `matheus.puppe@gmail.com` account |
+| `SEED_SSH_KEY_PATH` | Optional path to Lightsail PEM for seed server (default: `~/.ssh/lightsail-default-key-us-east-1.pem`) |
 
 ## Tests
 

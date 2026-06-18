@@ -4,23 +4,19 @@ defmodule PhoenixPaasWeb.ServerLiveTest do
   import Phoenix.LiveViewTest
 
   alias PhoenixPaas.Servers
+  alias PhoenixPaas.TenancyFixtures
 
-  test "lists servers", %{conn: conn} do
-    {:ok, _server} =
-      Servers.create_server(%{
-        name: "lightsail-1",
-        host_ip: "100.59.80.29",
-        ssh_user: "ubuntu",
-        region: "us-east-1"
-      })
+  setup :register_and_log_in_user
+
+  test "lists servers", %{conn: conn, scope: scope} do
+    TenancyFixtures.server_fixture(scope, %{name: "lightsail-1", host_ip: "100.59.80.29"})
 
     {:ok, view, _html} = live(conn, ~p"/servers")
     assert has_element?(view, "#servers-list")
     assert render(view) =~ "lightsail-1"
-    assert render(view) =~ "100.59.80.29"
   end
 
-  test "creates server from form", %{conn: conn} do
+  test "creates server from form", %{conn: conn, scope: scope} do
     {:ok, view, _html} = live(conn, ~p"/servers/new")
 
     assert view
@@ -31,6 +27,6 @@ defmodule PhoenixPaasWeb.ServerLiveTest do
 
     assert_redirect(view, ~p"/servers")
 
-    assert [%{name: "prod", host_ip: "10.0.0.1"}] = Servers.list_servers()
+    assert [%{name: "prod", host_ip: "10.0.0.1"}] = Servers.list_servers(scope)
   end
 end

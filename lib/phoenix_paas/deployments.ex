@@ -4,6 +4,7 @@ defmodule PhoenixPaas.Deployments do
   """
 
   import Ecto.Query, warn: false
+  alias PhoenixPaas.Accounts.Scope
   alias PhoenixPaas.Apps.App
   alias PhoenixPaas.Deployments.Deployment
   alias PhoenixPaas.Repo
@@ -20,6 +21,13 @@ defmodule PhoenixPaas.Deployments do
     |> Repo.insert()
   end
 
+  def enqueue(%Scope{tenant: tenant}, %App{tenant_id: tenant_id} = app, attrs)
+      when tenant_id == tenant.id do
+    enqueue(app, attrs)
+  end
+
+  def enqueue(%Scope{}, %App{}, _attrs), do: {:error, :unauthorized}
+
   def enqueue(%App{} = app, attrs) do
     with {:ok, deployment} <- create_deployment(app, attrs),
          {:ok, job} <-
@@ -32,7 +40,16 @@ defmodule PhoenixPaas.Deployments do
 
   def get_deployment!(id), do: Repo.get!(Deployment, id) |> Repo.preload(:app)
 
-  def for_app(%App{} = app) do
+  def for_app(%Scope{tenant: tenant}, %App{tenant_id: tenant_id} = app)
+      when tenant_id == tenant.id do
+    list_for_app(app)
+  end
+
+  def for_app(%Scope{}, %App{}), do: []
+
+  def for_app(%App{} = app), do: list_for_app(app)
+
+  defp list_for_app(%App{} = app) do
     Repo.all(
       from d in Deployment,
         where: d.app_id == ^app.id,
