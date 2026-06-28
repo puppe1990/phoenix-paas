@@ -35,6 +35,31 @@ defmodule PhoenixPaas.AccountsTest do
     end
   end
 
+  describe "normalize_session_token/1" do
+    test "accepts raw session tokens" do
+      token = :crypto.strong_rand_bytes(32)
+      assert Accounts.normalize_session_token(token) == token
+    end
+
+    test "decodes base64 session tokens" do
+      token = :crypto.strong_rand_bytes(32)
+      encoded = Base.url_encode64(token, padding: false)
+      assert Accounts.normalize_session_token(encoded) == token
+    end
+  end
+
+  describe "ensure_scope_for_user/1" do
+    test "creates a default tenant when the user has none" do
+      {:ok, user} = Accounts.register_user(%{email: "solo@example.com"})
+
+      assert %Accounts.Scope{user: %{id: user_id}, tenant: %Accounts.Tenant{}} =
+               Accounts.ensure_scope_for_user(user)
+
+      assert user_id == user.id
+      assert Accounts.get_scope_for_user(user)
+    end
+  end
+
   describe "get_user!/1" do
     test "raises if id is invalid" do
       assert_raise Ecto.NoResultsError, fn ->
