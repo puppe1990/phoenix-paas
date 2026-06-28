@@ -71,9 +71,14 @@ defmodule PhoenixPaasWeb.ConnCase do
 
     maybe_set_token_authenticated_at(token, opts[:token_authenticated_at])
 
+    encoded_token =
+      token
+      |> PhoenixPaas.Accounts.normalize_session_token()
+      |> Base.url_encode64(padding: false)
+
     conn
-    |> Phoenix.ConnTest.init_test_session(%{})
-    |> Plug.Conn.put_session(:user_token, token)
+    |> Phoenix.ConnTest.init_test_session(%{user_id: user.id})
+    |> Plug.Conn.put_session(:user_token, encoded_token)
   end
 
   defp maybe_set_token_authenticated_at(_token, nil), do: nil

@@ -11,9 +11,15 @@ defmodule PhoenixPaasWeb.Endpoint do
     same_site: "Lax"
   ]
 
+  @remember_me_cookie "_phoenix_paas_web_user_remember_me"
+
   socket "/live", Phoenix.LiveView.Socket,
-    websocket: [connect_info: [session: @session_options]],
-    longpoll: [connect_info: [session: @session_options]]
+    websocket: [
+      connect_info: [session: @session_options, cookies: [{@remember_me_cookie, :signed}]]
+    ],
+    longpoll: [
+      connect_info: [session: @session_options, cookies: [{@remember_me_cookie, :signed}]]
+    ]
 
   # Serve at "/" the static files from "priv/static" directory.
   #

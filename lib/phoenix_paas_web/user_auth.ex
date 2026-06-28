@@ -4,6 +4,8 @@ defmodule PhoenixPaasWeb.UserAuth do
   import Plug.Conn
   import Phoenix.Controller
 
+  require Logger
+
   alias PhoenixPaas.Accounts
   alias PhoenixPaas.Accounts.{Scope, Tenant, User}
 
@@ -65,13 +67,28 @@ defmodule PhoenixPaasWeb.UserAuth do
   Will reissue the session token if it is older than the configured age.
   """
   def fetch_current_scope_for_user(conn, _opts) do
-    with {token, conn} <- ensure_user_token(conn),
-         {user, token_inserted_at} <- Accounts.get_user_by_session_token(token) do
-      conn
-      |> assign(:current_scope, Accounts.get_scope_for_user(user))
-      |> maybe_reissue_user_session_token(user, token_inserted_at)
-    else
-      nil -> assign(conn, :current_scope, nil)
+    conn =
+      case ensure_user_token(conn) do
+        {token, conn} ->
+          put_token_in_session(conn, token)
+
+        nil ->
+          conn
+      end
+
+    session = get_session(conn)
+
+    case resolve_current_scope(session) do
+      {%Scope{} = scope, user, token_inserted_at} when not is_nil(token_inserted_at) ->
+        conn
+        |> assign(:current_scope, scope)
+        |> maybe_reissue_user_session_token(user, token_inserted_at)
+
+      {%Scope{} = scope, _, _} ->
+        assign(conn, :current_scope, scope)
+
+      nil ->
+        assign(conn, :current_scope, nil)
     end
   end
 
@@ -82,7 +99,7 @@ defmodule PhoenixPaasWeb.UserAuth do
       conn = fetch_cookies(conn, signed: [@remember_me_cookie])
 
       if token = conn.cookies[@remember_me_cookie] do
-        {token, conn |> put_token_in_session(token) |> put_session(:user_remember_me, true)}
+        {token, conn |> put_session(:user_remember_me, true)}
       else
         nil
       end
@@ -115,6 +132,7 @@ defmodule PhoenixPaasWeb.UserAuth do
     conn
     |> renew_session(user)
     |> put_token_in_session(token)
+    |> put_session(:user_id, user.id)
     |> maybe_write_remember_me_cookie(token, params, remember_me)
   end
 
@@ -128,22 +146,6 @@ defmodule PhoenixPaasWeb.UserAuth do
   end
 
   defp renew_session_fresh(conn) do
-    # This function renews the session ID and erases the whole
-    # session to avoid fixation attacks. If there is any data
-    # in the session you may want to preserve after log in/log out,
-    # you must explicitly fetch the session data before clearing
-    # and then immediately set it after clearing, for example:
-    #
-    #     defp renew_session(conn, _user) do
-    #       delete_csrf_token()
-    #       preferred_locale = get_session(conn, :preferred_locale)
-    #
-    #       conn
-    #       |> configure_session(renew: true)
-    #       |> clear_session()
-    #       |> put_session(:preferred_locale, preferred_locale)
-    #     end
-    #
     delete_csrf_token()
 
     conn
@@ -165,8 +167,14 @@ defmodule PhoenixPaasWeb.UserAuth do
     |> put_resp_cookie(@remember_me_cookie, token, @remember_me_options)
   end
 
-  defp put_token_in_session(conn, token) do
-    put_session(conn, :user_token, token)
+  defp put_token_in_session(conn, token) when is_binary(token) do
+    put_session(conn, :user_token, encode_session_token(token))
+  end
+
+  defp encode_session_token(token) when is_binary(token) do
+    token
+    |> Accounts.normalize_session_token()
+    |> Base.url_encode64(padding: false)
   end
 
   @doc """
@@ -207,6 +215,7 @@ defmodule PhoenixPaasWeb.UserAuth do
       conn
     else
       conn
+      |> drop_flash(:info)
       |> put_flash(:error, "You must log in to access this page.")
       |> maybe_store_return_to()
       |> redirect(to: ~p"/users/log-in")
@@ -227,17 +236,20 @@ defmodule PhoenixPaasWeb.UserAuth do
   LiveView on_mount hooks for session-based authentication.
   """
   def on_mount(:mount_current_scope, _params, session, socket) do
-    {:cont, mount_current_scope(socket, session)}
+    {:cont, mount_current_scope(socket, session, socket)}
   end
 
   def on_mount(:require_authenticated, _params, session, socket) do
-    socket = mount_current_scope(socket, session)
+    socket = mount_current_scope(socket, session, socket)
 
     if authenticated_scope?(socket.assigns.current_scope) do
       {:cont, socket}
     else
+      log_auth_failure(session, socket, "liveview_mount")
+
       socket =
         socket
+        |> Phoenix.LiveView.clear_flash(:info)
         |> Phoenix.LiveView.put_flash(:error, "You must log in to access this page.")
         |> Phoenix.LiveView.redirect(to: ~p"/users/log-in")
 
@@ -245,22 +257,84 @@ defmodule PhoenixPaasWeb.UserAuth do
     end
   end
 
-  defp mount_current_scope(socket, session) do
+  defp mount_current_scope(socket, session, connect_socket) do
     Phoenix.Component.assign_new(socket, :current_scope, fn ->
-      case session_user_token(session) do
-        nil ->
-          nil
-
-        token ->
-          case Accounts.get_user_by_session_token(token) do
-            {user, _} -> Accounts.get_scope_for_user(user)
-            nil -> nil
-          end
+      case resolve_current_scope(session, connect_socket) do
+        {%Scope{} = scope, _, _} -> scope
+        nil -> nil
       end
     end)
   end
 
-  defp session_user_token(session) do
-    session["user_token"] || session[:user_token]
+  defp resolve_current_scope(session, connect_socket \\ nil) do
+    token = session_user_token(session, connect_socket)
+
+    case token && Accounts.get_user_by_session_token(token) do
+      {user, token_inserted_at} ->
+        {Accounts.ensure_scope_for_user(user), user, token_inserted_at}
+
+      _ ->
+        case scope_from_user_id(session) do
+          %Scope{} = scope -> {scope, scope.user, nil}
+          nil -> nil
+        end
+    end
+  end
+
+  defp scope_from_user_id(session) do
+    case session_user_id(session) do
+      nil ->
+        nil
+
+      user_id ->
+        case Accounts.get_user(user_id) do
+          %User{} = user -> Accounts.ensure_scope_for_user(user)
+          nil -> nil
+        end
+    end
+  end
+
+  defp session_user_token(session, socket) do
+    session["user_token"] || session[:user_token] || remember_me_token(socket)
+  end
+
+  defp session_user_id(session) do
+    case session["user_id"] || session[:user_id] do
+      id when is_integer(id) -> id
+      id when is_binary(id) -> String.to_integer(id)
+      _ -> nil
+    end
+  end
+
+  defp remember_me_token(socket) do
+    with %_{} <- socket,
+         true <- Phoenix.LiveView.connected?(socket),
+         cookies when is_map(cookies) <- connect_cookies(socket),
+         token when is_binary(token) and token != "" <- Map.get(cookies, @remember_me_cookie) do
+      token
+    else
+      _ -> nil
+    end
+  end
+
+  defp connect_cookies(socket) do
+    Phoenix.LiveView.get_connect_info(socket, :cookies)
+  rescue
+    _ -> nil
+  end
+
+  defp log_auth_failure(session, socket, context) do
+    connected? = socket && Phoenix.LiveView.connected?(socket)
+
+    Logger.warning(
+      "auth failed context=#{context} connected=#{connected?} " <>
+        "has_user_token=#{session_user_token(session, socket) != nil} " <>
+        "has_user_id=#{session_user_id(session) != nil}"
+    )
+  end
+
+  defp drop_flash(conn, key) do
+    flash = Map.get(conn.assigns, :flash, %{})
+    assign(conn, :flash, Map.drop(flash, [key, Atom.to_string(key)]))
   end
 end
