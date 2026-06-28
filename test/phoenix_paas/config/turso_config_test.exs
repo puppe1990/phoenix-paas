@@ -13,6 +13,7 @@ defmodule PhoenixPaas.Config.TursoConfigTest do
 
     assert [
              adapter: Ecto.Adapters.LibSql,
+             migrator: Oban.Migrations.SQLite,
              uri: "libsql://my-db.turso.io",
              auth_token: "secret-token",
              pool_size: 15
@@ -28,6 +29,7 @@ defmodule PhoenixPaas.Config.TursoConfigTest do
 
     assert [
              adapter: Ecto.Adapters.LibSql,
+             migrator: Oban.Migrations.SQLite,
              database: "/var/data/phoenix_paas.db",
              pool_size: 5
            ] = Turso.repo_config(env)
