@@ -1,10 +1,20 @@
 defmodule PhoenixPaasWeb.UserSessionController do
   use PhoenixPaasWeb, :controller
 
+  alias Phoenix.Flash
   alias PhoenixPaas.Accounts
   alias PhoenixPaasWeb.UserAuth
 
   def new(conn, _params) do
+    flash = Map.get(conn.assigns, :flash, %{})
+
+    conn =
+      if Flash.get(flash, :error) do
+        assign(conn, :flash, Map.drop(flash, [:info, "info"]))
+      else
+        conn
+      end
+
     email = get_in(conn.assigns, [:current_scope, Access.key(:user), Access.key(:email)])
     form = Phoenix.Component.to_form(%{"email" => email}, as: "user")
 
@@ -35,7 +45,10 @@ defmodule PhoenixPaasWeb.UserSessionController do
   # email + password login
   def create(conn, %{"user" => %{"email" => email, "password" => password} = user_params}) do
     if user = Accounts.get_user_by_email_and_password(email, password) do
+      flash = Map.get(conn.assigns, :flash, %{})
+
       conn
+      |> assign(:flash, Map.drop(flash, [:error, "error"]))
       |> put_flash(:info, "Welcome back!")
       |> UserAuth.log_in_user(user, user_params)
     else
