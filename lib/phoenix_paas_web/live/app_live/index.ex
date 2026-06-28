@@ -1,7 +1,7 @@
 defmodule PhoenixPaasWeb.AppLive.Index do
   use PhoenixPaasWeb, :live_view
 
-  alias PhoenixPaas.{Apps, Servers}
+  alias PhoenixPaas.{Apps, Github, Servers}
   alias PhoenixPaas.Apps.App
 
   @impl true
@@ -21,9 +21,12 @@ defmodule PhoenixPaasWeb.AppLive.Index do
   end
 
   defp apply_action(socket, :new, _params) do
+    repos = Github.list_repos()
+
     socket
     |> assign(:page_title, "New app")
     |> assign(:app, %App{})
+    |> assign(:github_repos, repos)
     |> assign(:form, to_form(Apps.change_app(%App{})))
   end
 
@@ -32,6 +35,7 @@ defmodule PhoenixPaasWeb.AppLive.Index do
     |> assign(:page_title, "Apps")
     |> assign(:app, nil)
     |> assign(:form, nil)
+    |> assign(:github_repos, [])
   end
 
   @impl true
@@ -46,14 +50,14 @@ defmodule PhoenixPaasWeb.AppLive.Index do
 
   def handle_event("save", %{"app" => app_params}, socket) do
     case Apps.create_app(socket.assigns.current_scope, app_params) do
-      {:ok, app} ->
+      {:ok, app, webhook_status} ->
         app = Apps.get_app!(socket.assigns.current_scope, app.id)
 
         {:noreply,
          socket
          |> stream_insert(:apps, app)
          |> assign(:app_count, socket.assigns.app_count + 1)
-         |> put_flash(:info, "App registered")
+         |> put_flash(:info, app_registered_message(webhook_status))
          |> push_navigate(to: ~p"/apps/#{app.id}")}
 
       {:error, %Ecto.Changeset{} = changeset} ->
@@ -91,11 +95,24 @@ defmodule PhoenixPaasWeb.AppLive.Index do
                 <.input field={@form[:name]} type="text" label="Name" required />
                 <.input field={@form[:slug]} type="text" label="Slug" required />
                 <.input
+                  :if={@github_repos == []}
                   field={@form[:github_repo]}
                   type="text"
                   label="GitHub repo (owner/name)"
                   required
                 />
+                <.input
+                  :if={@github_repos != []}
+                  field={@form[:github_repo]}
+                  type="select"
+                  label="GitHub repository"
+                  prompt="Choose a repository"
+                  options={@github_repos}
+                  required
+                />
+                <p :if={@github_repos != []} class="sm:col-span-2 text-xs text-hd-muted">
+                  Repositories from your GitHub token. Saving an app automatically configures the push webhook (Heroku-style).
+                </p>
                 <.input field={@form[:host]} type="text" label="Host" required />
                 <.input field={@form[:branch]} type="text" label="Branch" />
                 <.input
@@ -183,4 +200,13 @@ defmodule PhoenixPaasWeb.AppLive.Index do
   defp server_options(servers) do
     Enum.map(servers, fn server -> {server.name, server.id} end)
   end
+
+  defp app_registered_message(:synced),
+    do: "App registered — GitHub webhook connected for automatic deploys"
+
+  defp app_registered_message(:no_token),
+    do: "App registered — set GITHUB_TOKEN on the panel to auto-configure webhooks"
+
+  defp app_registered_message({:error, message}),
+    do: "App registered — webhook not configured (#{message})"
 end

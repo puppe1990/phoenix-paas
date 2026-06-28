@@ -11,7 +11,7 @@ defmodule PhoenixPaas.Deploy.SshRunnerTest do
     server =
       TenancyFixtures.server_fixture(scope, %{name: "lightsail-1", host_ip: "100.59.80.29"})
 
-    {:ok, app} =
+    {:ok, app, _webhook_status} =
       Apps.create_app(scope, %{
         name: "Trip Planner",
         slug: "trip-planner",

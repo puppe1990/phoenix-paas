@@ -8,7 +8,7 @@ defmodule PhoenixPaas.DeploymentsTest do
     scope = TenancyFixtures.scope_fixture()
     server = TenancyFixtures.server_fixture(scope)
 
-    {:ok, app} =
+    {:ok, app, _webhook_status} =
       Apps.create_app(scope, %{
         name: "Trip Planner",
         slug: "trip-planner",

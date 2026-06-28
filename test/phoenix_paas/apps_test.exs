@@ -37,7 +37,7 @@ defmodule PhoenixPaas.AppsTest do
         server_id: server.id
       }
 
-      assert {:ok, app} = Apps.create_app(scope, attrs)
+      assert {:ok, app, _webhook_status} = Apps.create_app(scope, attrs)
       assert app.tenant_id == scope.tenant.id
       assert app.systemd_unit == "trip_planner_ia"
       assert app.release_path == "/opt/trip_planner_ia"
@@ -69,7 +69,7 @@ defmodule PhoenixPaas.AppsTest do
 
   describe "env_map/1" do
     test "includes PHX_HOST and stored env vars", %{scope: scope, server: server} do
-      {:ok, app} =
+      {:ok, app, _webhook_status} =
         Apps.create_app(scope, %{
           name: "Trip Planner",
           slug: "trip-planner",

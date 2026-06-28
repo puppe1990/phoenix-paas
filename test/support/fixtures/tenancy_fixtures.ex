@@ -36,7 +36,7 @@ defmodule PhoenixPaas.TenancyFixtures do
       server_id: server.id
     }
 
-    {:ok, app} = Apps.create_app(scope, Map.merge(defaults, attrs))
+    {:ok, app, _webhook_status} = Apps.create_app(scope, Map.merge(defaults, attrs))
     Apps.get_app!(scope, app.id)
   end
 end

@@ -7,6 +7,9 @@ defmodule PhoenixPaas.Apps do
   alias PhoenixPaas.Accounts.Scope
   alias PhoenixPaas.Repo
   alias PhoenixPaas.Apps.{App, AppEnvVar}
+  alias PhoenixPaas.Github
+
+  require Logger
 
   def list_apps(%Scope{tenant: tenant}) do
     Repo.all(
@@ -40,9 +43,48 @@ defmodule PhoenixPaas.Apps do
   def create_app(%Scope{tenant: tenant}, attrs) do
     attrs = Map.put(stringify_keys(attrs), "tenant_id", tenant.id)
 
-    %App{}
-    |> App.changeset(attrs)
-    |> Repo.insert()
+    with {:ok, app} <-
+           %App{}
+           |> App.changeset(attrs)
+           |> Repo.insert() do
+      {status, app} = sync_github_webhook(app)
+      {:ok, app, status}
+    end
+  end
+
+  @doc """
+  Provisions (or updates) the GitHub push webhook for an app.
+
+  Returns `{status, app}` where status is `:synced`, `:no_token`, or `{:error, message}`.
+  """
+  def sync_github_webhook(%App{} = app) do
+    case Github.ensure_webhook(app) do
+      :ok ->
+        {:synced, app}
+
+      {:error, :missing_token} ->
+        Logger.warning("GitHub webhook not synced for #{app.slug}: GITHUB_TOKEN is not set")
+        {:no_token, app}
+
+      {:error, reason} ->
+        message = if is_binary(reason), do: reason, else: inspect(reason)
+        Logger.warning("GitHub webhook not synced for #{app.slug}: #{message}")
+        {{:error, message}, app}
+    end
+  end
+
+  @doc """
+  Provisions GitHub push webhooks for every registered app.
+
+  Returns a list of `{slug, status}` tuples where status is `:synced`, `:no_token`,
+  or `{:error, message}`.
+  """
+  def sync_all_github_webhooks do
+    Repo.all(App)
+    |> Enum.map(fn app ->
+      {status, _app} = sync_github_webhook(app)
+      {app.slug, status}
+    end)
   end
 
   def change_app(app, attrs \\ %{}) do
