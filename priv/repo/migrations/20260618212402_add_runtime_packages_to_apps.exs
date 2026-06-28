@@ -3,7 +3,7 @@ defmodule PhoenixPaas.Repo.Migrations.AddRuntimePackagesToApps do
 
   def change do
     alter table(:apps) do
-      add :runtime_apt_packages, {:array, :string}, null: false, default: []
+      add :runtime_apt_packages, :json, null: false, default: "[]"
     end
   end
 end
