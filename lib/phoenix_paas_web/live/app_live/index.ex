@@ -26,6 +26,8 @@ defmodule PhoenixPaasWeb.AppLive.Index do
     |> assign(:page_title, "New app")
     |> assign(:app, %App{})
     |> assign(:github_repos, repos)
+    |> assign(:repo_search, "")
+    |> assign(:repo_picker_open?, false)
     |> assign(:show_advanced?, false)
     |> assign(:form, to_form(Apps.change_app(%App{})))
   end
@@ -36,27 +38,37 @@ defmodule PhoenixPaasWeb.AppLive.Index do
     |> assign(:app, nil)
     |> assign(:form, nil)
     |> assign(:github_repos, [])
+    |> assign(:repo_search, "")
+    |> assign(:repo_picker_open?, false)
     |> assign(:show_advanced?, false)
   end
 
   @impl true
   def handle_event("validate", %{"app" => app_params}, socket) do
-    app_params =
-      app_params
-      |> maybe_put_advanced(socket.assigns.show_advanced?)
-      |> then(&Provisioning.apply_preset(&1, socket.assigns.servers))
+    {:noreply, apply_form_params(socket, app_params)}
+  end
 
-    show_advanced? = advanced_enabled?(app_params, socket.assigns.show_advanced?)
-
-    changeset =
-      %App{}
-      |> Apps.change_app(app_params)
-      |> Map.put(:action, :validate)
-
+  def handle_event("search_repos", %{"repo_search" => query}, socket) do
     {:noreply,
      socket
-     |> assign(:show_advanced?, show_advanced?)
-     |> assign(:form, to_form(changeset))}
+     |> assign(:repo_search, query)
+     |> assign(:repo_picker_open?, true)}
+  end
+
+  def handle_event("open_repo_picker", _params, socket) do
+    {:noreply, assign(socket, :repo_picker_open?, true)}
+  end
+
+  def handle_event("close_repo_picker", _params, socket) do
+    {:noreply, assign(socket, :repo_picker_open?, false)}
+  end
+
+  def handle_event("pick_repo", %{"repo" => repo}, socket) do
+    {:noreply,
+     socket
+     |> assign(:repo_search, repo)
+     |> assign(:repo_picker_open?, false)
+     |> apply_form_params(%{"github_repo" => repo})}
   end
 
   def handle_event("toggle_advanced", _params, socket) do
@@ -124,14 +136,12 @@ defmodule PhoenixPaasWeb.AppLive.Index do
                 placeholder="puppe1990/my-phoenix-app"
                 required
               />
-              <.input
+              <.github_repo_picker
                 :if={@github_repos != []}
                 field={@form[:github_repo]}
-                type="select"
-                label="GitHub repository"
-                prompt="Choose a repository"
-                options={@github_repos}
-                required
+                repos={@github_repos}
+                repo_search={@repo_search}
+                open?={@repo_picker_open?}
               />
 
               <div
@@ -165,7 +175,7 @@ defmodule PhoenixPaasWeb.AppLive.Index do
                 :if={@github_repos != [] and not repo_selected?(@form)}
                 class="text-xs text-hd-muted"
               >
-                Repositories from your GitHub token. Select one to preview the deploy profile.
+                Repositories from your GitHub token. Search and pick one to preview the deploy profile.
               </div>
 
               <.hidden_provision_fields
@@ -363,6 +373,24 @@ defmodule PhoenixPaasWeb.AppLive.Index do
 
   defp maybe_put_advanced(params, true), do: Map.put(params, "advanced", "true")
   defp maybe_put_advanced(params, false), do: params
+
+  defp apply_form_params(socket, app_params) do
+    app_params =
+      app_params
+      |> maybe_put_advanced(socket.assigns.show_advanced?)
+      |> then(&Provisioning.apply_preset(&1, socket.assigns.servers))
+
+    show_advanced? = advanced_enabled?(app_params, socket.assigns.show_advanced?)
+
+    changeset =
+      %App{}
+      |> Apps.change_app(app_params)
+      |> Map.put(:action, :validate)
+
+    socket
+    |> assign(:show_advanced?, show_advanced?)
+    |> assign(:form, to_form(changeset))
+  end
 
   defp server_options(servers) do
     Enum.map(servers, fn server -> {server.name, server.id} end)
