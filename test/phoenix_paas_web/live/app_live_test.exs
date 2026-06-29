@@ -13,13 +13,36 @@ defmodule PhoenixPaasWeb.AppLiveTest do
     %{server: server}
   end
 
-  test "renders new app form", %{conn: conn} do
+  test "renders plug-and-play new app form", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/apps/new")
 
     assert has_element?(view, "#app-form")
     assert html =~ "Register Phoenix Application"
-    assert html =~ "Systemd unit"
-    assert html =~ "Release path"
+    assert html =~ "Pick a GitHub repository"
+    refute html =~ "Systemd unit"
+  end
+
+  test "auto-fills profile when github repo is selected", %{conn: conn, server: server} do
+    {:ok, view, _html} = live(conn, ~p"/apps/new")
+
+    html =
+      view
+      |> form("#app-form", app: %{github_repo: "puppe1990/trip-planner-ia-phx"})
+      |> render_change()
+
+    assert html =~ "app-provision-preview"
+    assert html =~ "Trip Planner"
+    assert html =~ "trip.gestaobem.com"
+    assert has_element?(view, "#save-app-button")
+
+    view
+    |> form("#app-form", app: %{github_repo: "puppe1990/trip-planner-ia-phx"})
+    |> render_submit()
+
+    app = Apps.get_app_by_repo("puppe1990/trip-planner-ia-phx")
+    assert app.name == "Trip Planner"
+    assert app.host == "trip.gestaobem.com"
+    assert app.server_id == server.id
   end
 
   test "lists apps", %{conn: conn, scope: scope, server: server} do
