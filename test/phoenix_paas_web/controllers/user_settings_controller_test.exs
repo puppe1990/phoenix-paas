@@ -11,6 +11,8 @@ defmodule PhoenixPaasWeb.UserSettingsControllerTest do
       conn = get(conn, ~p"/users/settings")
       response = html_response(conn, 200)
       assert response =~ "Account Settings"
+      assert response =~ "Update password"
+      assert response =~ "Send confirmation link"
       assert response =~ "Back to dashboard"
       assert response =~ "Dashboard"
       assert response =~ ~s(href="/")
@@ -64,7 +66,7 @@ defmodule PhoenixPaasWeb.UserSettingsControllerTest do
         })
 
       response = html_response(old_password_conn, 200)
-      assert response =~ "Settings"
+      assert response =~ "Account Settings"
       assert response =~ "should be at least 12 character(s)"
       assert response =~ "does not match password"
 
@@ -97,7 +99,7 @@ defmodule PhoenixPaasWeb.UserSettingsControllerTest do
         })
 
       response = html_response(conn, 200)
-      assert response =~ "Settings"
+      assert response =~ "Account Settings"
       assert response =~ "must have the @ sign and no spaces"
     end
   end
