@@ -13,6 +13,8 @@ defmodule PhoenixPaas.Repo.SeedsTest do
     assert Enum.any?(apps, &(&1.slug == "trip-planner"))
     assert Enum.any?(apps, &(&1.slug == "rapid-tools"))
     assert Enum.any?(apps, &(&1.slug == "open-drive"))
+    assert Enum.any?(apps, &(&1.slug == "mass-transcriptor"))
+    assert Enum.any?(apps, &(&1.slug == "phoenix-tts"))
 
     rapid_tools = Enum.find(apps, &(&1.slug == "rapid-tools"))
     assert rapid_tools.host == "tools.gestaobem.com"
@@ -23,6 +25,16 @@ defmodule PhoenixPaas.Repo.SeedsTest do
     assert open_drive.host == "drive.gestaobem.com"
     assert open_drive.port == 4002
     assert open_drive.systemd_unit == "open_drive"
+
+    mass_transcriptor = Enum.find(apps, &(&1.slug == "mass-transcriptor"))
+    assert mass_transcriptor.host == "transcribe.gestaobem.com"
+    assert mass_transcriptor.port == 4003
+    assert mass_transcriptor.systemd_unit == "mass_transcriptor"
+
+    phoenix_tts = Enum.find(apps, &(&1.slug == "phoenix-tts"))
+    assert phoenix_tts.host == "tts.gestaobem.com"
+    assert phoenix_tts.port == 4004
+    assert phoenix_tts.systemd_unit == "phoenix_tts"
   end
 
   test "seeds are idempotent" do
@@ -32,7 +44,14 @@ defmodule PhoenixPaas.Repo.SeedsTest do
     assert {:ok, %{scope: scope}} = Seeds.run()
 
     slugs = Apps.list_apps(scope) |> Enum.map(& &1.slug) |> Enum.sort()
-    assert slugs == ["open-drive", "rapid-tools", "trip-planner"]
+
+    assert slugs == [
+             "mass-transcriptor",
+             "open-drive",
+             "phoenix-tts",
+             "rapid-tools",
+             "trip-planner"
+           ]
   end
 
   test "matheus scope sees seeded apps but other user does not" do
@@ -45,8 +64,12 @@ defmodule PhoenixPaas.Repo.SeedsTest do
     assert Enum.any?(matheus_apps, &(&1.slug == "trip-planner"))
     assert Enum.any?(matheus_apps, &(&1.slug == "rapid-tools"))
     assert Enum.any?(matheus_apps, &(&1.slug == "open-drive"))
+    assert Enum.any?(matheus_apps, &(&1.slug == "mass-transcriptor"))
+    assert Enum.any?(matheus_apps, &(&1.slug == "phoenix-tts"))
     refute Enum.any?(other_apps, &(&1.slug == "trip-planner"))
     refute Enum.any?(other_apps, &(&1.slug == "rapid-tools"))
     refute Enum.any?(other_apps, &(&1.slug == "open-drive"))
+    refute Enum.any?(other_apps, &(&1.slug == "mass-transcriptor"))
+    refute Enum.any?(other_apps, &(&1.slug == "phoenix-tts"))
   end
 end
