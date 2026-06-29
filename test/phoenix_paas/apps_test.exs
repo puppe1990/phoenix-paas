@@ -67,6 +67,39 @@ defmodule PhoenixPaas.AppsTest do
     end
   end
 
+  describe "env var display helpers" do
+    test "sensitive_env_key?/1 detects secrets and tokens" do
+      assert Apps.sensitive_env_key?("SECRET_KEY_BASE")
+      assert Apps.sensitive_env_key?("TURSO_AUTH_TOKEN")
+      assert Apps.sensitive_env_key?("ASSEMBLYAI_API_KEY")
+      refute Apps.sensitive_env_key?("PHX_HOST")
+      refute Apps.sensitive_env_key?("PORT")
+    end
+
+    test "display_env_value/3 masks sensitive values unless revealed" do
+      assert Apps.display_env_value("SECRET_KEY_BASE", "super-secret", false) =~ "•"
+      assert Apps.display_env_value("SECRET_KEY_BASE", "super-secret", true) == "super-secret"
+      assert Apps.display_env_value("PORT", "4003", false) == "4003"
+    end
+
+    test "list_env_vars_for_display/1 returns sorted vars", %{scope: scope, server: server} do
+      {:ok, app, _webhook_status} =
+        Apps.create_app(scope, %{
+          name: "Trip Planner",
+          slug: "trip-planner",
+          github_repo: "puppe1990/trip-planner-ia-phx",
+          host: "trip.gestaobem.com",
+          server_id: server.id
+        })
+
+      {:ok, _} = Apps.put_env_var(app, "PORT", "4003")
+      {:ok, _} = Apps.put_env_var(app, "SECRET_KEY_BASE", "super-secret")
+
+      assert [%{key: "PORT"}, %{key: "SECRET_KEY_BASE", sensitive?: true}] =
+               Apps.list_env_vars_for_display(app)
+    end
+  end
+
   describe "env_map/1" do
     test "includes PHX_HOST and stored env vars", %{scope: scope, server: server} do
       {:ok, app, _webhook_status} =

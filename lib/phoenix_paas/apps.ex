@@ -110,6 +110,50 @@ defmodule PhoenixPaas.Apps do
     Map.put(vars, "PHX_HOST", app.host)
   end
 
+  @sensitive_markers ~w(SECRET TOKEN PASSWORD _KEY)
+
+  def sensitive_env_key?(key) when is_binary(key) do
+    upper = String.upcase(key)
+
+    Enum.any?(@sensitive_markers, fn marker ->
+      String.contains?(upper, marker)
+    end)
+  end
+
+  def display_env_value(key, value, reveal?) when is_binary(key) and is_binary(value) do
+    if reveal? or not sensitive_env_key?(key) do
+      value
+    else
+      mask_env_value(value)
+    end
+  end
+
+  def list_env_vars_for_display(%App{} = app) do
+    app = Repo.preload(app, :env_vars)
+
+    app.env_vars
+    |> Enum.map(fn %{key: key, value: value} ->
+      %{key: key, value: value, sensitive?: sensitive_env_key?(key)}
+    end)
+    |> Enum.sort_by(& &1.key)
+  end
+
+  defp mask_env_value(value) do
+    len = String.length(value)
+
+    cond do
+      len <= 4 ->
+        String.duplicate("•", len)
+
+      len <= 8 ->
+        String.duplicate("•", 8)
+
+      true ->
+        String.slice(value, 0, 2) <>
+          String.duplicate("•", min(16, len - 4)) <> String.slice(value, -2, 2)
+    end
+  end
+
   defp stringify_keys(map) when is_map(map) do
     Map.new(map, fn
       {key, value} when is_atom(key) -> {Atom.to_string(key), value}
