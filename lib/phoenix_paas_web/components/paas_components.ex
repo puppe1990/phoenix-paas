@@ -108,8 +108,10 @@ defmodule PhoenixPaasWeb.PaasComponents do
     """
   end
 
+  attr :id, :string, default: "deploy-terminal"
   attr :deployment, :map, required: true
   attr :active?, :boolean, default: false
+  attr :duration, :string, default: nil
 
   def deploy_terminal(assigns) do
     lines =
@@ -121,7 +123,7 @@ defmodule PhoenixPaasWeb.PaasComponents do
 
     ~H"""
     <div
-      id="deploy-terminal"
+      id={@id}
       class="overflow-hidden rounded-md border border-hd-border bg-hd-bg font-mono text-[11px] text-hd-text"
     >
       <div class="flex items-center justify-between border-b border-hd-border bg-hd-aside px-3 py-1.5">
@@ -167,7 +169,12 @@ defmodule PhoenixPaasWeb.PaasComponents do
           <span>OTP 26.2.1</span>
           <span>Phoenix 1.7.12</span>
         </div>
-        <span>Target VM: us-east-1</span>
+        <div class="flex items-center gap-3">
+          <span :if={@duration && @duration != "—"} class="tabular-nums text-hd-text">
+            {@duration}
+          </span>
+          <span>Target VM: us-east-1</span>
+        </div>
       </div>
     </div>
     """

@@ -21,9 +21,17 @@ defmodule PhoenixPaasWeb.AppLive.Show do
       |> assign(:deployments, deployments)
       |> assign(:webhook_url, webhook_url())
       |> assign(:show_secret?, false)
-      |> assign(:latest_deployment, List.first(deployments))
+      |> assign(:show_env_values?, false)
+      |> assign(:env_vars, Apps.list_env_vars_for_display(app))
+      |> assign(:env_file, Apps.App.deploy_config(app).env_file)
+      |> assign(:selected_deployment_id, nil)
+      |> assign(
+        :viewed_deployment,
+        viewed_deployment(deployments, nil, active_deployment?(deployments))
+      )
       |> assign(:deploying?, active_deployment?(deployments))
       |> assign(:runtime_packages, RuntimePackages.resolve(app).packages)
+      |> assign(:custom_domain_app?, app.slug == "catalogo")
       |> schedule_poll(active_deployment?(deployments))
 
     {:ok, socket}
@@ -42,7 +50,8 @@ defmodule PhoenixPaasWeb.AppLive.Show do
         {:noreply,
          socket
          |> assign(:deployments, deployments)
-         |> assign(:latest_deployment, List.first(deployments))
+         |> assign(:selected_deployment_id, nil)
+         |> assign(:viewed_deployment, viewed_deployment(deployments, nil, true))
          |> assign(:deploying?, true)
          |> schedule_poll(true)
          |> put_flash(:info, "Deploy queued")}
@@ -56,19 +65,41 @@ defmodule PhoenixPaasWeb.AppLive.Show do
     {:noreply, assign(socket, :show_secret?, not socket.assigns.show_secret?)}
   end
 
+  def handle_event("toggle_env_values", _params, socket) do
+    {:noreply, assign(socket, :show_env_values?, not socket.assigns.show_env_values?)}
+  end
+
   def handle_event("select_app", %{"app_id" => app_id}, socket) do
     {:noreply, push_navigate(socket, to: ~p"/apps/#{app_id}")}
+  end
+
+  def handle_event("view_deploy_log", %{"id" => id}, socket) do
+    if socket.assigns.deploying? do
+      {:noreply, socket}
+    else
+      deployment_id = String.to_integer(id)
+
+      {:noreply,
+       socket
+       |> assign(:selected_deployment_id, deployment_id)
+       |> assign(
+         :viewed_deployment,
+         viewed_deployment(socket.assigns.deployments, deployment_id, false)
+       )}
+    end
   end
 
   @impl true
   def handle_info(:poll_deployments, socket) do
     deployments = Deployments.for_app(socket.assigns.current_scope, socket.assigns.app)
     deploying? = active_deployment?(deployments)
+    selected_id = if deploying?, do: nil, else: socket.assigns.selected_deployment_id
 
     {:noreply,
      socket
      |> assign(:deployments, deployments)
-     |> assign(:latest_deployment, List.first(deployments))
+     |> assign(:selected_deployment_id, selected_id)
+     |> assign(:viewed_deployment, viewed_deployment(deployments, selected_id, deploying?))
      |> assign(:deploying?, deploying?)
      |> schedule_poll(deploying?)}
   end
@@ -146,6 +177,33 @@ defmodule PhoenixPaasWeb.AppLive.Show do
           />
         </div>
 
+        <div :if={@custom_domain_app?} id="custom-domain-checklist" class="paas-card space-y-3 p-4">
+          <div class="flex flex-wrap items-center gap-2">
+            <h3 class="font-display text-xs font-semibold text-hd-text">Custom tenant domains</h3>
+            <span class="rounded border border-hd-orange/40 bg-hd-orange/10 px-2 py-0.5 font-mono text-[9px] text-hd-orange">
+              Solo server · on-demand TLS
+            </span>
+          </div>
+          <p class="text-[11px] leading-relaxed text-hd-muted">
+            Tenants point a <span class="font-mono text-hd-text">CNAME</span>
+            to <span class="font-mono text-hd-orange">DOMAIN_CNAME_TARGET</span>
+            (set to {@app.host}), then verify DNS in the admin panel.
+            Caddy issues certificates only after the tenant domain is verified.
+          </p>
+          <ul class="space-y-1 font-mono text-[10px] text-hd-muted">
+            <li>
+              <span class="text-hd-orange">PLATFORM_HOSTS</span> — platform hostnames served directly
+            </li>
+            <li>
+              <span class="text-hd-orange">DOMAIN_CNAME_TARGET</span>
+              — CNAME anchor for tenant custom domains
+            </li>
+            <li>
+              <span class="text-hd-orange">PHX_HOST</span> — primary platform host ({@app.host})
+            </li>
+          </ul>
+        </div>
+
         <div :if={@runtime_packages != []} id="runtime-packages" class="paas-card p-4">
           <h3 class="font-display text-xs font-semibold text-hd-text">Runtime packages</h3>
           <p class="mt-1 text-[11px] text-hd-muted">
@@ -158,6 +216,55 @@ defmodule PhoenixPaasWeb.AppLive.Show do
             >
               {package}
             </span>
+          </div>
+        </div>
+
+        <div id="app-env-vars" class="paas-card space-y-3 p-4">
+          <div class="flex items-start justify-between gap-3">
+            <div class="space-y-0.5">
+              <h3 class="font-display text-xs font-semibold text-hd-text">Environment variables</h3>
+              <p class="text-[11px] text-hd-muted">
+                Synced to <span class="font-mono text-hd-orange">{@env_file}</span>
+                on every deploy. <span class="text-hd-text">PHX_HOST</span>
+                is always injected from the app host ({@app.host}).
+              </p>
+            </div>
+            <button
+              :if={Enum.any?(@env_vars, & &1.sensitive?)}
+              type="button"
+              phx-click="toggle_env_values"
+              class="shrink-0 text-[10px] text-hd-orange hover:underline"
+            >
+              {if @show_env_values?, do: "Hide secrets", else: "Reveal secrets"}
+            </button>
+          </div>
+
+          <div
+            :if={@env_vars == []}
+            class="rounded border border-dashed border-hd-border px-4 py-6 text-center text-xs text-hd-muted"
+          >
+            No environment variables configured yet.
+          </div>
+
+          <div :if={@env_vars != []} class="overflow-hidden rounded border border-hd-border">
+            <table class="paas-table w-full text-left font-mono">
+              <thead>
+                <tr>
+                  <th>Key</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody id="env-vars-list">
+                <tr :for={env_var <- @env_vars} id={"env-var-#{env_var.key}"}>
+                  <td class="align-top text-[11px] text-hd-orange">{env_var.key}</td>
+                  <td class="max-w-0">
+                    <span class="block truncate text-[11px] text-hd-text">
+                      {Apps.display_env_value(env_var.key, env_var.value, @show_env_values?)}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -203,22 +310,43 @@ defmodule PhoenixPaasWeb.AppLive.Show do
           </div>
         </div>
 
-        <div :if={@latest_deployment} class="space-y-1.5">
-          <div class="flex items-center justify-between px-0.5">
-            <span class="block font-mono text-[10px] font-semibold uppercase tracking-widest text-hd-muted">
-              Build Output Stream logs
-            </span>
-            <span
-              :if={@deploying?}
-              class="flex items-center gap-1 font-mono text-[11px] text-hd-orange"
-            >
-              <span class="size-1 animate-ping rounded-full bg-hd-orange" /> Compiling OTP release…
-            </span>
+        <div :if={@viewed_deployment} class="space-y-1.5">
+          <div class="flex flex-wrap items-center justify-between gap-2 px-0.5">
+            <div class="space-y-0.5">
+              <span class="block font-mono text-[10px] font-semibold uppercase tracking-widest text-hd-muted">
+                Build Output Stream logs
+              </span>
+              <span
+                :if={@selected_deployment_id && @viewed_deployment}
+                class="font-mono text-[10px] text-hd-muted"
+              >
+                Viewing deploy #{@viewed_deployment.id} · click another row in history to switch
+              </span>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+              <span
+                :if={Deployments.duration(@viewed_deployment)}
+                class="font-mono text-[11px] tabular-nums text-hd-text"
+              >
+                Duration: {Deployments.format_duration(Deployments.duration(@viewed_deployment))}
+              </span>
+              <span
+                :if={@deploying?}
+                class="flex items-center gap-1 font-mono text-[11px] text-hd-orange"
+              >
+                <span class="size-1 animate-ping rounded-full bg-hd-orange" /> Compiling OTP release…
+              </span>
+            </div>
           </div>
           <div :if={@deploying?} class="h-1 overflow-hidden rounded-full bg-hd-aside">
             <div class="deploy-progress h-full rounded-full" />
           </div>
-          <.deploy_terminal deployment={@latest_deployment} active?={@deploying?} />
+          <.deploy_terminal
+            id={"deploy-terminal-#{@viewed_deployment.id}"}
+            deployment={@viewed_deployment}
+            active?={@deploying?}
+            duration={Deployments.format_duration(Deployments.duration(@viewed_deployment))}
+          />
         </div>
 
         <div class="overflow-hidden rounded-md border border-hd-border bg-hd-card">
@@ -234,16 +362,26 @@ defmodule PhoenixPaasWeb.AppLive.Show do
                   <th>Build Status</th>
                   <th>Commit/SHA Code</th>
                   <th>Trigger</th>
+                  <th>Duration</th>
                   <th>Executed Timestamp</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 <tr :if={@deployments == []}>
-                  <td colspan="4" class="py-6 text-center text-xs text-hd-muted">
+                  <td colspan="6" class="py-6 text-center text-xs text-hd-muted">
                     No deployments registered yet. Click "Deploy now" to launch container builds.
                   </td>
                 </tr>
-                <tr :for={deployment <- @deployments}>
+                <tr
+                  :for={deployment <- @deployments}
+                  id={"deployment-row-#{deployment.id}"}
+                  class={[
+                    "transition-colors",
+                    @viewed_deployment && @viewed_deployment.id == deployment.id &&
+                      "bg-hd-aside/60"
+                  ]}
+                >
                   <td><.deploy_status_badge status={deployment.status} /></td>
                   <td>
                     <span class="rounded border border-hd-border bg-hd-aside px-1.5 py-0.5 text-[10px] text-hd-orange">
@@ -251,8 +389,29 @@ defmodule PhoenixPaasWeb.AppLive.Show do
                     </span>
                   </td>
                   <td class="text-[11px] text-hd-muted">{deployment.triggered_by}</td>
+                  <td class="text-[11px] tabular-nums text-hd-text">
+                    {Deployments.format_duration(Deployments.duration(deployment))}
+                  </td>
                   <td class="text-[11px] text-hd-muted">
                     {format_datetime(deployment.started_at || deployment.inserted_at)}
+                  </td>
+                  <td class="text-right">
+                    <button
+                      :if={not @deploying?}
+                      id={"view-deploy-log-#{deployment.id}"}
+                      type="button"
+                      phx-click="view_deploy_log"
+                      phx-value-id={deployment.id}
+                      class={[
+                        "rounded border px-2 py-0.5 font-mono text-[10px] transition-colors",
+                        @viewed_deployment && @viewed_deployment.id == deployment.id &&
+                          "border-hd-orange/50 bg-hd-orange/10 text-hd-orange",
+                        (!@viewed_deployment || @viewed_deployment.id != deployment.id) &&
+                          "border-hd-border text-hd-muted hover:border-hd-orange/40 hover:text-hd-orange"
+                      ]}
+                    >
+                      View log
+                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -266,6 +425,19 @@ defmodule PhoenixPaasWeb.AppLive.Show do
 
   defp active_deployment?(deployments) do
     Enum.any?(deployments, &(&1.status in [:queued, :running]))
+  end
+
+  defp viewed_deployment(deployments, selected_id, deploying?) do
+    cond do
+      deploying? ->
+        Enum.find(deployments, &(&1.status in [:queued, :running])) || List.first(deployments)
+
+      selected_id ->
+        Enum.find(deployments, &(&1.id == selected_id)) || List.first(deployments)
+
+      true ->
+        List.first(deployments)
+    end
   end
 
   defp schedule_poll(socket, true) do
