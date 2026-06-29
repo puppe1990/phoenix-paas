@@ -43,6 +43,7 @@ defmodule PhoenixPaasWeb.Router do
       live "/apps", AppLive.Index, :index
       live "/apps/new", AppLive.Index, :new
       live "/apps/:id", AppLive.Show, :show
+      live "/apps/:app_id/deployments", AppLive.Deployments, :index
     end
   end
 
