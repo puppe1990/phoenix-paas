@@ -48,7 +48,24 @@ defmodule PhoenixPaasWeb.AppLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/apps/#{app.id}")
     assert has_element?(view, "#deploy-button")
+    assert has_element?(view, "#app-detail-tabs")
+
+    view |> element("#app-detail-tab-deployments") |> render_click()
     assert render(view) =~ "abc123"
+  end
+
+  test "switches app detail tabs", %{conn: conn, scope: scope, server: server} do
+    app = TenancyFixtures.app_fixture(scope, server)
+
+    {:ok, view, html} = live(conn, ~p"/apps/#{app.id}")
+
+    assert has_element?(view, "#app-detail-tab-environment")
+    assert html =~ "Environment variables"
+    refute has_element?(view, "#app-webhook")
+
+    view |> element("#app-detail-tab-webhook") |> render_click()
+    assert has_element?(view, "#app-webhook")
+    refute has_element?(view, "#app-env-vars")
   end
 
   test "shows environment variables with masked secrets", %{
@@ -98,7 +115,10 @@ defmodule PhoenixPaasWeb.AppLiveTest do
       })
       |> PhoenixPaas.Repo.update()
 
-    {:ok, view, html} = live(conn, ~p"/apps/#{app.id}")
+    {:ok, view, _html} = live(conn, ~p"/apps/#{app.id}")
+
+    view |> element("#app-detail-tab-deployments") |> render_click()
+    html = render(view)
 
     assert html =~ "1m 30s"
     assert has_element?(view, "#deployment-row-#{finished.id}")
@@ -137,7 +157,10 @@ defmodule PhoenixPaasWeb.AppLiveTest do
       })
       |> PhoenixPaas.Repo.update()
 
-    {:ok, view, html} = live(conn, ~p"/apps/#{app.id}")
+    {:ok, view, _html} = live(conn, ~p"/apps/#{app.id}")
+
+    view |> element("#app-detail-tab-deployments") |> render_click()
+    html = render(view)
 
     assert html =~ "newer deploy log line"
     refute html =~ "older deploy log line"
