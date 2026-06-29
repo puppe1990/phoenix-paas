@@ -16,8 +16,12 @@ defmodule PhoenixPaasWeb.PaasShell do
     ~H"""
     <div class="flex min-h-screen flex-col bg-hd-bg text-hd-text antialiased">
       <header class="sticky top-0 z-40 flex flex-wrap items-center justify-between gap-3 border-b border-hd-border bg-hd-aside px-4 py-3">
-        <div class="flex items-center gap-2.5">
-          <div class="flex size-9 items-center justify-center rounded-lg border border-hd-border bg-hd-card">
+        <.link
+          href={~p"/"}
+          class="group flex items-center gap-2.5 rounded-lg transition-opacity hover:opacity-90"
+          aria-label="Back to dashboard"
+        >
+          <div class="flex size-9 items-center justify-center rounded-lg border border-hd-border bg-hd-card transition-colors group-hover:border-hd-orange/40">
             <.icon name="hero-fire" class="size-5 text-hd-orange" />
           </div>
           <div>
@@ -31,7 +35,7 @@ defmodule PhoenixPaasWeb.PaasShell do
               AWS Lightsail & GitHub Webhooks deploy pipeline for Elixir OTP nodes
             </p>
           </div>
-        </div>
+        </.link>
 
         <nav class="flex flex-wrap items-center gap-2 text-xs font-medium">
           <%= if @current_scope do %>
