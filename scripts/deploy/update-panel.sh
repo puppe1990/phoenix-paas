@@ -8,6 +8,7 @@ DEPLOY_IP="${DEPLOY_IP:-}"
 DEPLOY_HOST="${DEPLOY_HOST:-paas.gestaobem.com}"
 DEPLOY_SSH_KEY="${DEPLOY_SSH_KEY:-$HOME/.ssh/lightsail-default-key-us-east-1.pem}"
 DEPLOY_USER="${DEPLOY_USER:-ubuntu}"
+_cli_run_seed="${RUN_SEED-}"
 RUN_SEED="${RUN_SEED:-false}"
 SEED_USER_PASSWORD="${SEED_USER_PASSWORD:-}"
 SEED_SSH_KEY_PATH="${SEED_SSH_KEY_PATH:-}"
@@ -15,6 +16,10 @@ SEED_SSH_KEY_PATH="${SEED_SSH_KEY_PATH:-}"
 if [[ -f "$ROOT/scripts/deploy/deploy.local.env" ]]; then
   # shellcheck source=/dev/null
   source "$ROOT/scripts/deploy/deploy.local.env"
+fi
+
+if [[ -n "${_cli_run_seed}" ]]; then
+  RUN_SEED="${_cli_run_seed}"
 fi
 
 log() {
