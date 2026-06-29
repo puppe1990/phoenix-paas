@@ -74,6 +74,17 @@ defmodule PhoenixPaas.Seeds do
       release_path: "/opt/rapid_tools"
     })
 
+    seed_app(scope, server, tenant_id, %{
+      name: "OpenDrive",
+      slug: "open-drive",
+      github_repo: "puppe1990/OpenDrive",
+      branch: "main",
+      host: "drive.gestaobem.com",
+      port: 4002,
+      systemd_unit: "open_drive",
+      release_path: "/opt/open_drive"
+    })
+
     {:ok, %{user: user, scope: scope, server: server}}
   end
 
