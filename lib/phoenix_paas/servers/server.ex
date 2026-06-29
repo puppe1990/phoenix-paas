@@ -23,6 +23,7 @@ defmodule PhoenixPaas.Servers.Server do
     field :blueprint_name, :string
     field :monthly_price_usd, :decimal
     field :specs_synced_at, :utc_datetime
+    field :deploy_mode, :string, default: "shared"
 
     belongs_to :tenant, Tenant
 
@@ -47,9 +48,11 @@ defmodule PhoenixPaas.Servers.Server do
       :blueprint_name,
       :monthly_price_usd,
       :specs_synced_at,
+      :deploy_mode,
       :tenant_id
     ])
     |> validate_required([:name, :host_ip, :ssh_user, :region, :tenant_id])
+    |> validate_inclusion(:deploy_mode, ["shared", "dedicated"])
     |> validate_length(:name, min: 1, max: 160)
     |> validate_ipv4(:host_ip)
     |> maybe_put_ssh_key()

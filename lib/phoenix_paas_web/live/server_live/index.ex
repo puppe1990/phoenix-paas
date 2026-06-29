@@ -97,6 +97,15 @@ defmodule PhoenixPaasWeb.ServerLive.Index do
                 <.input field={@form[:region]} type="text" label="Region" />
                 <.input field={@form[:aws_instance_name]} type="text" label="AWS instance name" />
                 <.input
+                  field={@form[:deploy_mode]}
+                  type="select"
+                  label="Deploy mode"
+                  options={[
+                    {"Shared (multiple apps)", "shared"},
+                    {"Dedicated (solo app)", "dedicated"}
+                  ]}
+                />
+                <.input
                   field={@form[:ssh_private_key]}
                   type="textarea"
                   label="SSH private key (PEM)"
@@ -143,9 +152,19 @@ defmodule PhoenixPaasWeb.ServerLive.Index do
                 <div class="flex items-start justify-between">
                   <div class="space-y-0.5">
                     <h3 class="font-display text-xs font-semibold text-hd-text">{server.name}</h3>
-                    <span class="inline-block rounded border border-hd-border bg-hd-bg px-2 py-0.5 font-mono text-[9px] font-medium text-hd-orange">
-                      {server.region}
-                    </span>
+                    <div class="flex flex-wrap gap-1">
+                      <span class="inline-block rounded border border-hd-border bg-hd-bg px-2 py-0.5 font-mono text-[9px] font-medium text-hd-orange">
+                        {server.region}
+                      </span>
+                      <span class={[
+                        "inline-block rounded border px-2 py-0.5 font-mono text-[9px] font-medium",
+                        server.deploy_mode == "dedicated" &&
+                          "border-hd-orange/40 bg-hd-orange/10 text-hd-orange",
+                        server.deploy_mode != "dedicated" && "border-hd-border bg-hd-bg text-hd-muted"
+                      ]}>
+                        {if server.deploy_mode == "dedicated", do: "Dedicated", else: "Shared"}
+                      </span>
+                    </div>
                   </div>
                   <span class="flex items-center gap-1.5 rounded border border-hd-border bg-hd-bg px-2 py-0.5 font-mono text-[10px]">
                     <span class={[

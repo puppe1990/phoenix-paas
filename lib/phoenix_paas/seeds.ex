@@ -44,15 +44,7 @@ defmodule PhoenixPaas.Seeds do
 
     tenant_id = scope.tenant.id
 
-    server =
-      case Repo.one(from s in Servers.Server, where: s.tenant_id == ^tenant_id, limit: 1) do
-        %Servers.Server{} = existing ->
-          maybe_backfill_server_ssh_key(existing, opts)
-
-        nil ->
-          {:ok, server} = Servers.create_server(scope, server_seed_attrs(opts))
-          server
-      end
+    server = ensure_shared_server(scope, tenant_id, opts)
 
     seed_app(scope, server, tenant_id, %{
       name: "Trip Planner",
@@ -85,7 +77,104 @@ defmodule PhoenixPaas.Seeds do
       release_path: "/opt/open_drive"
     })
 
-    {:ok, %{user: user, scope: scope, server: server}}
+    seed_app(scope, server, tenant_id, %{
+      name: "Mass Transcriptor",
+      slug: "mass-transcriptor",
+      github_repo: "puppe1990/mass-transcriptor-phoenix",
+      branch: "main",
+      host: "transcribe.gestaobem.com",
+      port: 4003,
+      systemd_unit: "mass_transcriptor",
+      release_path: "/opt/mass_transcriptor"
+    })
+
+    seed_app(scope, server, tenant_id, %{
+      name: "Phoenix TTS",
+      slug: "phoenix-tts",
+      github_repo: "puppe1990/phoenix_tts",
+      branch: "main",
+      host: "tts.gestaobem.com",
+      port: 4004,
+      systemd_unit: "phoenix_tts",
+      release_path: "/opt/phoenix_tts"
+    })
+
+    catalog_server = maybe_seed_catalog(scope, tenant_id, opts)
+
+    {:ok, %{user: user, scope: scope, server: server, catalog_server: catalog_server}}
+  end
+
+  defp ensure_shared_server(scope, tenant_id, opts) do
+    case Repo.one(
+           from s in Servers.Server,
+             where: s.tenant_id == ^tenant_id and s.name == "trip-lightsail",
+             limit: 1
+         ) do
+      %Servers.Server{} = existing ->
+        maybe_backfill_server_ssh_key(existing, opts)
+
+      nil ->
+        {:ok, server} = Servers.create_server(scope, shared_server_seed_attrs(opts))
+        server
+    end
+  end
+
+  defp maybe_seed_catalog(scope, tenant_id, opts) do
+    case catalog_server_ip(opts) do
+      nil ->
+        nil
+
+      host_ip ->
+        catalog_server =
+          case Repo.one(
+                 from s in Servers.Server,
+                   where: s.tenant_id == ^tenant_id and s.name == "catalogo-lightsail",
+                   limit: 1
+               ) do
+            %Servers.Server{} = existing ->
+              maybe_update_catalog_server(existing, host_ip, opts)
+
+            nil ->
+              {:ok, server} =
+                Servers.create_server(scope, catalog_server_seed_attrs(host_ip, opts))
+
+              server
+          end
+
+        seed_app(scope, catalog_server, tenant_id, %{
+          name: "Catálogo",
+          slug: "catalogo",
+          github_repo: "gestao-bem/catalog_platform",
+          branch: "main",
+          host: "loja.gestaobem.com",
+          port: 4000,
+          systemd_unit: "catalog_platform",
+          release_path: "/opt/catalog_platform"
+        })
+
+        catalog_server
+    end
+  end
+
+  defp maybe_update_catalog_server(%Servers.Server{} = server, host_ip, opts) do
+    changes =
+      %{host_ip: host_ip, deploy_mode: "dedicated", aws_instance_name: "catalogo-lightsail"}
+      |> maybe_put_ssh_key_attr(opts)
+
+    if Enum.any?(changes, fn {key, value} -> Map.get(server, key) != value end) do
+      server
+      |> Servers.Server.changeset(changes)
+      |> Repo.update!()
+    else
+      server
+    end
+  end
+
+  defp maybe_put_ssh_key_attr(attrs, opts) do
+    case read_ssh_key(opts) do
+      nil -> attrs
+      key -> Map.put(attrs, :ssh_private_key, key)
+    end
   end
 
   defp seed_app(scope, server, tenant_id, attrs) do
@@ -124,18 +213,41 @@ defmodule PhoenixPaas.Seeds do
     end
   end
 
-  defp server_seed_attrs(opts) do
+  defp shared_server_seed_attrs(opts) do
     attrs = %{
       name: "trip-lightsail",
       host_ip: "100.59.80.29",
       ssh_user: "ubuntu",
-      region: "us-east-1"
+      region: "us-east-1",
+      deploy_mode: "shared",
+      aws_instance_name: "trip-lightsail"
     }
 
     case read_ssh_key(opts) do
       nil -> attrs
       key -> Map.put(attrs, :ssh_private_key, key)
     end
+  end
+
+  defp catalog_server_seed_attrs(host_ip, opts) do
+    attrs = %{
+      name: "catalogo-lightsail",
+      host_ip: host_ip,
+      ssh_user: "ubuntu",
+      region: "us-east-1",
+      deploy_mode: "dedicated",
+      aws_instance_name: "catalogo-lightsail"
+    }
+
+    case read_ssh_key(opts) do
+      nil -> attrs
+      key -> Map.put(attrs, :ssh_private_key, key)
+    end
+  end
+
+  defp catalog_server_ip(opts) do
+    Keyword.get(opts, :catalog_server_ip) ||
+      System.get_env("CATALOGO_SERVER_IP")
   end
 
   defp maybe_backfill_server_ssh_key(%Servers.Server{} = server, opts) do

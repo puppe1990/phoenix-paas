@@ -71,4 +71,46 @@ defmodule PhoenixPaas.DeploymentsTest do
       assert ids == [newer.id, older.id]
     end
   end
+
+  describe "duration/1" do
+    setup %{app: app} do
+      {:ok, deployment} = Deployments.create_deployment(app, %{git_sha: "abc123"})
+      %{deployment: deployment}
+    end
+
+    test "returns nil for queued deployment", %{deployment: deployment} do
+      assert Deployments.duration(deployment) == nil
+      assert Deployments.format_duration(nil) == "—"
+    end
+
+    test "computes elapsed seconds for running deployment", %{deployment: deployment} do
+      started_at = ~U[2026-06-29 10:00:00Z]
+      now = ~U[2026-06-29 10:02:15Z]
+
+      {:ok, running} =
+        deployment
+        |> Ecto.Changeset.change(%{status: :running, started_at: started_at})
+        |> PhoenixPaas.Repo.update()
+
+      assert Deployments.duration(running, now) == 135
+      assert Deployments.format_duration(135) == "2m 15s"
+    end
+
+    test "computes finished duration", %{deployment: deployment} do
+      started_at = ~U[2026-06-29 10:00:00Z]
+      finished_at = ~U[2026-06-29 10:00:45Z]
+
+      {:ok, finished} =
+        deployment
+        |> Ecto.Changeset.change(%{
+          status: :success,
+          started_at: started_at,
+          finished_at: finished_at
+        })
+        |> PhoenixPaas.Repo.update()
+
+      assert Deployments.duration(finished) == 45
+      assert Deployments.format_duration(45) == "45s"
+    end
+  end
 end
