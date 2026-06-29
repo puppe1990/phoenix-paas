@@ -1,5 +1,5 @@
 defmodule PhoenixPaas.Deploy.SshEnvSyncTest do
-  use PhoenixPaas.DataCase, async: true
+  use PhoenixPaas.DataCase, async: false
 
   alias PhoenixPaas.Apps
   alias PhoenixPaas.Apps.App

@@ -1,7 +1,13 @@
 defmodule PhoenixPaas.Deploy.Ssh do
   @moduledoc false
 
+  import Ecto.Query, only: [from: 2]
+
   alias PhoenixPaas.Apps
+  alias PhoenixPaas.Apps.App
+  alias PhoenixPaas.Deploy.AppManifest
+  alias PhoenixPaas.Deploy.ServerProvision
+  alias PhoenixPaas.Repo
 
   @tar_excludes ~w(_build deps node_modules .git tmp priv/static/assets)
 
@@ -18,6 +24,7 @@ defmodule PhoenixPaas.Deploy.Ssh do
       try do
         with {:ok, key_path} <- write_temp_key(server),
              {:ok, work_dir} <- clone_repo(app.github_repo, branch),
+             :ok <- validate_manifest_for_server(work_dir, app, server),
              {:ok, tarball} <- create_tarball(work_dir),
              {:ok, log} <-
                upload_and_build(tarball, key_path, server, app, config, sha, work_dir) do
@@ -93,7 +100,7 @@ defmodule PhoenixPaas.Deploy.Ssh do
 
     with {:ok, upload_out} <- scp(tarball, remote_tar, key_path, target),
          {:ok, build_out} <-
-           remote_build(remote_tar, key_path, target, server, app, config, sha, runtime) do
+           remote_build(remote_tar, key_path, target, server, app, config, sha, runtime, work_dir) do
       log =
         [
           "==> Cloning #{app.github_repo} (branch #{app.branch})",
@@ -117,8 +124,8 @@ defmodule PhoenixPaas.Deploy.Ssh do
     end
   end
 
-  defp remote_build(remote_tar, key_path, target, server, app, config, sha, runtime) do
-    script = remote_build_script(server, app, config, sha, remote_tar, runtime)
+  defp remote_build(remote_tar, key_path, target, server, app, config, sha, runtime, work_dir) do
+    script = remote_build_script(server, app, config, sha, remote_tar, runtime, work_dir)
     script_path = Path.join(System.tmp_dir!(), "phoenix_paas_remote_#{sha}.sh")
 
     try do
@@ -178,7 +185,30 @@ defmodule PhoenixPaas.Deploy.Ssh do
     end
   end
 
-  defp remote_build_script(server, app, config, sha, remote_tar, runtime) do
+  defp apply_manifest_config(config, %AppManifest{} = manifest) do
+    config
+    |> maybe_put(:release_name, manifest.release_name)
+    |> maybe_put(:systemd_unit, manifest.systemd_unit)
+    |> maybe_put(:release_path, manifest.release_path)
+  end
+
+  defp maybe_put(config, _key, nil), do: config
+  defp maybe_put(config, key, value), do: Map.put(config, key, value)
+
+  defp validate_manifest_for_server(work_dir, %App{} = app, server) do
+    manifest = AppManifest.resolve(work_dir, app)
+    apps_on_server = Repo.all(from(a in App, where: a.server_id == ^server.id))
+
+    case AppManifest.validate_for_server(manifest, server, apps_on_server, app) do
+      :ok -> :ok
+      {:error, message} -> {:error, message}
+    end
+  end
+
+  defp remote_build_script(server, app, config, sha, remote_tar, runtime, work_dir) do
+    manifest = AppManifest.resolve(work_dir, app)
+    config = apply_manifest_config(config, manifest)
+
     packages_install =
       case runtime.packages do
         [] ->
@@ -232,6 +262,7 @@ defmodule PhoenixPaas.Deploy.Ssh do
     export MIX_ENV=prod
     export SECRET_KEY_BASE=buildtime_secret_key_base_32chars_min
     export TURSO_DATABASE_URL=libsql://build.turso.io
+    export TURSO_AUTH_TOKEN=build_token
 
     log "Fetching dependencies"
     mix local.hex --force
@@ -254,13 +285,9 @@ defmodule PhoenixPaas.Deploy.Ssh do
     sudo cp -a "_build/prod/rel/#{config.release_name}/." "$RELEASE_DIR/"
     sudo ln -sfn "$RELEASE_DIR" #{config.release_path}/current
 
+    #{ServerProvision.provision_script(app, config, manifest)}
     #{env_sync_script(app, config)}
-    if [[ -f #{config.env_file} && -x #{config.release_path}/current/bin/migrate ]]; then
-      log "Running migrations"
-      sudo bash -c 'set -a; source #{config.env_file}; set +a; #{config.release_path}/current/bin/migrate'
-    else
-      log "Skipping migrations"
-    fi
+    #{ServerProvision.migrate_script(config)}
 
     log "Restarting #{config.systemd_unit}"
     sudo systemctl restart #{config.systemd_unit}
@@ -272,6 +299,8 @@ defmodule PhoenixPaas.Deploy.Ssh do
       sudo journalctl -u #{config.systemd_unit} -n 30 --no-pager
       exit 1
     fi
+
+    #{ServerProvision.reload_caddy_script()}
     """
   end
 
