@@ -8,7 +8,6 @@ defmodule PhoenixPaasWeb.Layouts do
 
   attr :flash, :map, required: true
   attr :active_tab, :atom, default: :dashboard
-  attr :browser_path, :string, default: "dashboard"
   attr :server_count, :integer, default: 0
   attr :app_count, :integer, default: 0
   attr :current_scope, :map, default: nil
@@ -38,7 +37,6 @@ defmodule PhoenixPaasWeb.Layouts do
       <PaasShell.shell
         flash={@flash}
         active_tab={@active_tab}
-        browser_path={@browser_path}
         server_count={@server_count}
         app_count={@app_count}
         current_scope={@current_scope}

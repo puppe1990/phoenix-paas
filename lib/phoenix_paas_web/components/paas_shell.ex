@@ -9,7 +9,6 @@ defmodule PhoenixPaasWeb.PaasShell do
   attr :active_tab, :atom, required: true
   attr :server_count, :integer, default: 0
   attr :app_count, :integer, default: 0
-  attr :browser_path, :string, default: "dashboard"
   attr :current_scope, :map, default: nil
   slot :inner_block, required: true
 
@@ -17,8 +16,12 @@ defmodule PhoenixPaasWeb.PaasShell do
     ~H"""
     <div class="flex min-h-screen flex-col bg-hd-bg text-hd-text antialiased">
       <header class="sticky top-0 z-40 flex flex-wrap items-center justify-between gap-3 border-b border-hd-border bg-hd-aside px-4 py-3">
-        <div class="flex items-center gap-2.5">
-          <div class="flex size-9 items-center justify-center rounded-lg border border-hd-border bg-hd-card">
+        <.link
+          href={~p"/"}
+          class="group flex items-center gap-2.5 rounded-lg transition-opacity hover:opacity-90"
+          aria-label="Back to dashboard"
+        >
+          <div class="flex size-9 items-center justify-center rounded-lg border border-hd-border bg-hd-card transition-colors group-hover:border-hd-orange/40">
             <.icon name="hero-fire" class="size-5 text-hd-orange" />
           </div>
           <div>
@@ -32,7 +35,7 @@ defmodule PhoenixPaasWeb.PaasShell do
               AWS Lightsail & GitHub Webhooks deploy pipeline for Elixir OTP nodes
             </p>
           </div>
-        </div>
+        </.link>
 
         <nav class="flex flex-wrap items-center gap-2 text-xs font-medium">
           <%= if @current_scope do %>
@@ -57,20 +60,8 @@ defmodule PhoenixPaasWeb.PaasShell do
       </header>
 
       <main class="mx-auto w-full max-w-7xl flex-1 space-y-4 p-3 md:p-4">
-        <div class="flex gap-2.5 rounded-md border border-hd-border/80 bg-hd-card/80 p-3">
-          <.icon name="hero-sparkles" class="mt-0.5 size-4 shrink-0 text-hd-orange" />
-          <div class="space-y-0.5 text-xs">
-            <p class="font-display font-semibold text-hd-orange">Interactive Control Panel</p>
-            <p class="leading-relaxed text-hd-muted">
-              Manage Lightsail VMs, register Phoenix apps, and deploy OTP releases via manual trigger or GitHub webhooks.
-            </p>
-          </div>
-        </div>
-
         <div class="mx-auto w-full max-w-[1440px] rounded-lg border border-hd-border bg-hd-bg shadow-[0_0_0_1px_rgba(48,54,61,0.5)] transition-all duration-300">
-          <.browser_chrome path={@browser_path} />
-
-          <div class="relative min-h-[700px] overflow-hidden rounded-b-lg p-4 lg:p-6">
+          <div class="relative min-h-[700px] overflow-hidden rounded-lg p-4 lg:p-6">
             <div class="paas-grid-bg pointer-events-none absolute inset-0 opacity-[0.03]" />
 
             <div class="relative z-10 mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-hd-border pb-4">
@@ -133,42 +124,6 @@ defmodule PhoenixPaasWeb.PaasShell do
       </footer>
 
       <.flash_toast flash={@flash} />
-    </div>
-    """
-  end
-
-  attr :path, :string, required: true
-
-  defp browser_chrome(assigns) do
-    ~H"""
-    <div class="flex select-none items-center justify-between rounded-t-lg border-b border-hd-border bg-hd-aside px-3 py-2">
-      <div class="flex w-1/4 items-center gap-1.5">
-        <span class="size-2.5 rounded-full bg-[#FF5F56]" />
-        <span class="size-2.5 rounded-full bg-[#FFBD2E]" />
-        <span class="size-2.5 rounded-full bg-[#27C93F]" />
-        <span class="ml-2 hidden font-mono text-[9px] font-medium uppercase tracking-wider text-hd-muted sm:inline">
-          AWS Lightsail: SECURE
-        </span>
-      </div>
-
-      <div class="max-w-lg flex-1">
-        <div class="flex items-center justify-between rounded border border-hd-border bg-hd-bg px-2.5 py-0.5 font-mono text-xs text-hd-muted transition-all focus-within:border-hd-orange">
-          <div class="flex min-w-0 items-center gap-1 truncate">
-            <.icon name="hero-shield-check" class="size-3 shrink-0 text-hd-green" />
-            <span>https://</span>
-            <span class="truncate text-hd-text">panel.phoenixpaas.io</span>
-            <span>/</span>
-            <span class="truncate capitalize text-hd-orange">{@path}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex w-1/4 items-center justify-end gap-2">
-        <div class="hidden items-center gap-1 font-mono text-[10px] text-hd-muted md:flex">
-          <span class="size-1 rounded-full bg-hd-green" />
-          <span>prod-cluster</span>
-        </div>
-      </div>
     </div>
     """
   end

@@ -13,7 +13,6 @@ defmodule PhoenixPaasWeb.DashboardLive do
      assign(socket,
        page_title: "Dashboard",
        active_tab: :dashboard,
-       browser_path: "dashboard",
        servers: servers,
        apps: apps,
        server_count: length(servers),
@@ -28,7 +27,6 @@ defmodule PhoenixPaasWeb.DashboardLive do
       flash={@flash}
       current_scope={@current_scope}
       active_tab={@active_tab}
-      browser_path={@browser_path}
       server_count={@server_count}
       app_count={@app_count}
     >

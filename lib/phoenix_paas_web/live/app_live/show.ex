@@ -16,7 +16,6 @@ defmodule PhoenixPaasWeb.AppLive.Show do
       socket
       |> assign(:page_title, app.name)
       |> assign(:active_tab, :apps)
-      |> assign(:browser_path, "apps/#{app.slug}")
       |> assign(:app, app)
       |> assign(:apps, Apps.list_apps(scope))
       |> assign(:deployments, deployments)
@@ -81,7 +80,6 @@ defmodule PhoenixPaasWeb.AppLive.Show do
       flash={@flash}
       current_scope={@current_scope}
       active_tab={@active_tab}
-      browser_path={@browser_path}
       server_count={@server_count}
       app_count={@app_count}
     >
