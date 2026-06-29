@@ -182,7 +182,14 @@ defmodule PhoenixPaasWeb.AppLive.Index do
                 >
                   {app.name}
                 </.link>
-                <p class="font-mono text-sm text-hd-muted">{app.host}</p>
+                <.link
+                  href={"https://#{app.host}"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="font-mono text-sm text-hd-orange hover:text-hd-orange-dark hover:underline"
+                >
+                  {app.host}
+                </.link>
               </div>
               <span class="rounded border border-hd-border bg-hd-bg px-2 py-0.5 font-mono text-[10px] text-hd-muted">
                 {app.server.name}

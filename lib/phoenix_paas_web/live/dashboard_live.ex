@@ -138,7 +138,16 @@ defmodule PhoenixPaasWeb.DashboardLive do
                       {app.name}
                     </.link>
                   </td>
-                  <td class="font-mono text-sm">{app.host}</td>
+                  <td>
+                    <.link
+                      href={"https://#{app.host}"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="font-mono text-sm text-hd-orange hover:text-hd-orange-dark hover:underline"
+                    >
+                      {app.host}
+                    </.link>
+                  </td>
                   <td>{app.server.name}</td>
                   <td class="text-right">
                     <.link navigate={~p"/apps/#{app.id}"} class="paas-btn-secondary text-[10px]">
