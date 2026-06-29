@@ -32,4 +32,8 @@ defmodule PhoenixPaas.GithubTest do
     payload = %{"ref" => "refs/heads/dev", "after" => "abc123"}
     assert :ignore = Github.push_deploy_attrs(payload, "main")
   end
+
+  test "list_repos/0 returns a list when token is missing" do
+    assert Github.list_repos() == []
+  end
 end
