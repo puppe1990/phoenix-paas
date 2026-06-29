@@ -2,11 +2,6 @@ defmodule PhoenixPaasWeb.UserSettingsController do
   use PhoenixPaasWeb, :controller
 
   alias PhoenixPaas.{Accounts, Apps, Servers}
-  alias PhoenixPaasWeb.UserAuth
-
-  import PhoenixPaasWeb.UserAuth, only: [require_sudo_mode: 2]
-
-  plug :require_sudo_mode
   plug :assign_panel_counts
   plug :assign_settings_forms
 
@@ -41,13 +36,13 @@ defmodule PhoenixPaasWeb.UserSettingsController do
   def update(conn, %{"action" => "update_password"} = params) do
     %{"user" => user_params} = params
     user = conn.assigns.current_scope.user
+    current_token = get_session(conn, :user_token)
 
-    case Accounts.update_user_password(user, user_params) do
-      {:ok, {user, _}} ->
+    case Accounts.update_user_password(user, user_params, keep_session_token: current_token) do
+      {:ok, {_user, _}} ->
         conn
         |> put_flash(:info, "Password updated successfully.")
-        |> put_session(:user_return_to, ~p"/users/settings")
-        |> UserAuth.log_in_user(user)
+        |> redirect(to: ~p"/users/settings")
 
       {:error, changeset} ->
         render(conn, :edit, password_form: Phoenix.Component.to_form(changeset))

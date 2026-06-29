@@ -275,6 +275,23 @@ defmodule PhoenixPaas.AccountsTest do
 
       refute Repo.get_by(UserToken, user_id: user.id)
     end
+
+    test "keeps the current session token when requested", %{user: user} do
+      current_token = Accounts.generate_user_session_token(user)
+      other_token = Accounts.generate_user_session_token(user)
+
+      {:ok, {_, expired_tokens}} =
+        Accounts.update_user_password(
+          user,
+          %{password: "new valid password"},
+          keep_session_token: current_token
+        )
+
+      assert length(expired_tokens) == 1
+      assert hd(expired_tokens).token == other_token
+      assert Accounts.get_user_by_session_token(current_token)
+      refute Accounts.get_user_by_session_token(other_token)
+    end
   end
 
   describe "generate_user_session_token/1" do

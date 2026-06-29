@@ -24,18 +24,24 @@ defmodule PhoenixPaasWeb.UserSettingsControllerTest do
       assert redirected_to(conn) == ~p"/users/log-in"
     end
 
-    @tag token_authenticated_at: DateTime.add(DateTime.utc_now(:second), -11, :minute)
-    test "redirects if user is not in sudo mode", %{conn: conn} do
+    @tag token_authenticated_at: DateTime.add(DateTime.utc_now(:second), -120, :minute)
+    test "settings page stays accessible without recent re-authentication", %{conn: conn} do
       conn = get(conn, ~p"/users/settings")
-      assert redirected_to(conn) == ~p"/users/log-in"
+      response = html_response(conn, 200)
 
-      assert Phoenix.Flash.get(conn.assigns.flash, :error) ==
-               "You must re-authenticate to access this page."
+      assert response =~ "Account Settings"
+      assert response =~ "Update password"
     end
   end
 
   describe "PUT /users/settings (change password form)" do
-    test "updates the user password and resets tokens", %{conn: conn, user: user} do
+    test "updates the user password and keeps the current browser session", %{
+      conn: conn,
+      user: user
+    } do
+      other_token = Accounts.generate_user_session_token(user)
+      current_token = get_session(conn, :user_token)
+
       new_password_conn =
         put(conn, ~p"/users/settings", %{
           "action" => "update_password",
@@ -46,13 +52,14 @@ defmodule PhoenixPaasWeb.UserSettingsControllerTest do
         })
 
       assert redirected_to(new_password_conn) == ~p"/users/settings"
-
-      assert get_session(new_password_conn, :user_token) != get_session(conn, :user_token)
+      assert get_session(new_password_conn, :user_token) == current_token
 
       assert Phoenix.Flash.get(new_password_conn.assigns.flash, :info) =~
                "Password updated successfully"
 
       assert Accounts.get_user_by_email_and_password(user.email, "new valid password")
+      refute Accounts.get_user_by_session_token(other_token)
+      assert Accounts.get_user_by_session_token(current_token)
     end
 
     test "does not update password on invalid data", %{conn: conn} do
