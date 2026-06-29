@@ -280,10 +280,10 @@ defmodule PhoenixPaas.Accounts do
       {:error, %Ecto.Changeset{}}
 
   """
-  def update_user_password(user, attrs) do
+  def update_user_password(user, attrs, opts \\ []) do
     user
     |> User.password_changeset(attrs)
-    |> update_user_and_delete_all_tokens()
+    |> update_user_and_delete_all_tokens(opts)
   end
 
   ## Session
@@ -417,15 +417,46 @@ defmodule PhoenixPaas.Accounts do
 
   ## Token helper
 
-  defp update_user_and_delete_all_tokens(changeset) do
+  defp update_user_and_delete_all_tokens(changeset, opts \\ []) do
+    keep_token =
+      opts
+      |> Keyword.get(:keep_session_token)
+      |> keep_session_token()
+
     Repo.transact(fn ->
       with {:ok, user} <- Repo.update(changeset) do
         tokens_to_expire = Repo.all_by(UserToken, user_id: user.id)
 
-        Repo.delete_all(from(t in UserToken, where: t.id in ^Enum.map(tokens_to_expire, & &1.id)))
+        {tokens_to_keep, tokens_to_delete} =
+          Enum.split_with(tokens_to_expire, &keep_session_token?(&1, keep_token))
 
-        {:ok, {user, tokens_to_expire}}
+        if keep_token && tokens_to_keep != [] do
+          now = DateTime.utc_now(:second)
+
+          Repo.update_all(
+            from(t in UserToken, where: t.id in ^Enum.map(tokens_to_keep, & &1.id)),
+            set: [authenticated_at: now]
+          )
+        end
+
+        Repo.delete_all(from(t in UserToken, where: t.id in ^Enum.map(tokens_to_delete, & &1.id)))
+
+        {:ok, {user, tokens_to_delete}}
       end
     end)
   end
+
+  defp keep_session_token(nil), do: nil
+
+  defp keep_session_token(token) when is_binary(token) do
+    normalize_session_token(token)
+  end
+
+  defp keep_session_token?(_token, nil), do: false
+
+  defp keep_session_token?(%UserToken{token: token, context: "session"}, keep_token) do
+    token == keep_token
+  end
+
+  defp keep_session_token?(_token, _keep_token), do: false
 end
