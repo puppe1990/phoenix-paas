@@ -16,9 +16,25 @@ defmodule PhoenixPaasWeb.UserSessionControllerTest do
       assert response =~ ~p"/users/register"
       assert response =~ ~s(id="login_form")
       assert response =~ "Password"
+      assert response =~ ~s(data-password-toggle)
+      assert response =~ "hero-eye"
       refute response =~ "Log in with email"
       assert response =~ ~s(id="signup-link")
       assert response =~ "Create account"
+    end
+
+    test "clears stale welcome flash when session expired", %{conn: conn} do
+      conn =
+        conn
+        |> init_test_session(%{})
+        |> fetch_flash()
+        |> put_flash(:info, "Welcome back!")
+        |> put_flash(:error, "You must log in to access this page.")
+
+      html = get(conn, ~p"/users/log-in") |> html_response(200)
+
+      refute html =~ "Welcome back!"
+      assert html =~ "You must log in to access this page."
     end
 
     test "renders login page with email filled in (sudo mode)", %{conn: conn, user: user} do

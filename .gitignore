@@ -39,4 +39,8 @@ npm-debug.log
 *.db
 *.db-*
 
+# Production deploy secrets (use *.example templates)
+/deploy/env.production
+/scripts/deploy/deploy.local.env
+
 .playwright-cli/

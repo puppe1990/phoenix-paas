@@ -1,6 +1,8 @@
 defmodule PhoenixPaas.Deploy.Ssh do
   @moduledoc false
 
+  alias PhoenixPaas.Apps
+
   @tar_excludes ~w(_build deps node_modules .git tmp priv/static/assets)
 
   def run_deploy(deployment, app, server) do
@@ -142,7 +144,41 @@ defmodule PhoenixPaas.Deploy.Ssh do
     "'" <> String.replace(value, "'", "'\\''") <> "'"
   end
 
-  defp remote_build_script(server, _app, config, sha, remote_tar, runtime) do
+  @doc false
+  def env_sync_enabled?(%{env_vars: vars}) when is_list(vars), do: vars != []
+  def env_sync_enabled?(_), do: false
+
+  @doc false
+  def env_file_content(app) do
+    app
+    |> Apps.env_map()
+    |> format_env_file()
+  end
+
+  defp format_env_file(env_map) do
+    env_map
+    |> Enum.sort()
+    |> Enum.map_join("\n", fn {key, value} -> "#{key}=#{value}" end)
+    |> then(&(&1 <> "\n"))
+  end
+
+  @doc false
+  def env_sync_script(app, config) do
+    if env_sync_enabled?(app) do
+      content_b64 = app |> env_file_content() |> Base.encode64()
+
+      """
+      log "Syncing environment from panel"
+      sudo mkdir -p "$(dirname #{config.env_file})"
+      echo '#{content_b64}' | base64 -d | sudo tee #{config.env_file} > /dev/null
+      sudo chmod 600 #{config.env_file}
+      """
+    else
+      ""
+    end
+  end
+
+  defp remote_build_script(server, app, config, sha, remote_tar, runtime) do
     packages_install =
       case runtime.packages do
         [] ->
@@ -218,6 +254,7 @@ defmodule PhoenixPaas.Deploy.Ssh do
     sudo cp -a "_build/prod/rel/#{config.release_name}/." "$RELEASE_DIR/"
     sudo ln -sfn "$RELEASE_DIR" #{config.release_path}/current
 
+    #{env_sync_script(app, config)}
     if [[ -f #{config.env_file} && -x #{config.release_path}/current/bin/migrate ]]; then
       log "Running migrations"
       sudo bash -c 'set -a; source #{config.env_file}; set +a; #{config.release_path}/current/bin/migrate'

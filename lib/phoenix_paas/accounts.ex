@@ -60,6 +60,8 @@ defmodule PhoenixPaas.Accounts do
   """
   def get_user!(id), do: Repo.get!(User, id)
 
+  def get_user(id), do: Repo.get(User, id)
+
   defp tenant_name_from_email(email) when is_binary(email) do
     email
     |> String.split("@")
@@ -158,6 +160,24 @@ defmodule PhoenixPaas.Accounts do
   end
 
   def get_scope_for_user(nil), do: nil
+
+  @doc """
+  Returns the user's scope, creating a default tenant when none exists yet.
+  """
+  def ensure_scope_for_user(%User{} = user) do
+    case get_scope_for_user(user) do
+      %Scope{} = scope ->
+        scope
+
+      nil ->
+        ensure_tenant_for_user(user, %{
+          name: tenant_name_from_email(user.email),
+          slug: tenant_slug_from_email(user.email)
+        })
+    end
+  end
+
+  def ensure_scope_for_user(nil), do: nil
 
   @doc """
   Upserts a tenant by slug and ensures the user has an owner membership.
@@ -283,8 +303,22 @@ defmodule PhoenixPaas.Accounts do
   If the token is valid `{user, token_inserted_at}` is returned, otherwise `nil` is returned.
   """
   def get_user_by_session_token(token) do
+    token = normalize_session_token(token)
+
     {:ok, query} = UserToken.verify_session_token_query(token)
     Repo.one(query)
+  end
+
+  @doc false
+  def normalize_session_token(token) when is_binary(token) do
+    if byte_size(token) == 32 do
+      token
+    else
+      case Base.url_decode64(token, padding: false) do
+        {:ok, decoded} when byte_size(decoded) == 32 -> decoded
+        _ -> token
+      end
+    end
   end
 
   @doc """
@@ -376,6 +410,7 @@ defmodule PhoenixPaas.Accounts do
   Deletes the signed token with the given context.
   """
   def delete_user_session_token(token) do
+    token = normalize_session_token(token)
     Repo.delete_all(from(UserToken, where: [token: ^token, context: "session"]))
     :ok
   end

@@ -74,7 +74,7 @@ defmodule PhoenixPaas.Accounts.TenancyTest do
       server_a = TenancyFixtures.server_fixture(scope_a)
       server_b = TenancyFixtures.server_fixture(scope_b)
 
-      assert {:ok, _} =
+      assert {:ok, _, _} =
                Apps.create_app(scope_a, %{
                  name: "Trip",
                  slug: "trip-planner",
@@ -83,7 +83,7 @@ defmodule PhoenixPaas.Accounts.TenancyTest do
                  server_id: server_a.id
                })
 
-      assert {:ok, _} =
+      assert {:ok, _, _} =
                Apps.create_app(scope_b, %{
                  name: "Trip",
                  slug: "trip-planner",

@@ -64,17 +64,23 @@ defmodule PhoenixPaasWeb.UserAuthTest do
 
     test "writes a cookie if remember_me is configured", %{conn: conn, user: user} do
       conn = conn |> fetch_cookies() |> UserAuth.log_in_user(user, %{"remember_me" => "true"})
-      assert get_session(conn, :user_token) == conn.cookies[@remember_me_cookie]
+      session_token = get_session(conn, :user_token)
+      remember_me_token = conn.cookies[@remember_me_cookie]
+
+      assert Accounts.normalize_session_token(session_token) == remember_me_token
       assert get_session(conn, :user_remember_me) == true
 
       assert %{value: signed_token, max_age: max_age} = conn.resp_cookies[@remember_me_cookie]
-      assert signed_token != get_session(conn, :user_token)
+      assert signed_token != session_token
       assert max_age == @remember_me_cookie_max_age
     end
 
     test "writes a cookie if remember_me was set in previous session", %{conn: conn, user: user} do
       conn = conn |> fetch_cookies() |> UserAuth.log_in_user(user, %{"remember_me" => "true"})
-      assert get_session(conn, :user_token) == conn.cookies[@remember_me_cookie]
+
+      assert Accounts.normalize_session_token(get_session(conn, :user_token)) ==
+               conn.cookies[@remember_me_cookie]
+
       assert get_session(conn, :user_remember_me) == true
 
       conn =
@@ -130,14 +136,14 @@ defmodule PhoenixPaasWeb.UserAuthTest do
 
       assert conn.assigns.current_scope.user.id == user.id
       assert conn.assigns.current_scope.user.authenticated_at == user.authenticated_at
-      assert get_session(conn, :user_token) == user_token
+      assert Accounts.get_user_by_session_token(get_session(conn, :user_token))
     end
 
     test "authenticates user from cookies", %{conn: conn, user: user} do
       logged_in_conn =
         conn |> fetch_cookies() |> UserAuth.log_in_user(user, %{"remember_me" => "true"})
 
-      user_token = logged_in_conn.cookies[@remember_me_cookie]
+      _user_token = logged_in_conn.cookies[@remember_me_cookie]
       %{value: signed_token} = logged_in_conn.resp_cookies[@remember_me_cookie]
 
       conn =
@@ -147,7 +153,7 @@ defmodule PhoenixPaasWeb.UserAuthTest do
 
       assert conn.assigns.current_scope.user.id == user.id
       assert conn.assigns.current_scope.user.authenticated_at == user.authenticated_at
-      assert get_session(conn, :user_token) == user_token
+      assert Accounts.get_user_by_session_token(get_session(conn, :user_token))
       assert get_session(conn, :user_remember_me)
     end
 
@@ -178,7 +184,7 @@ defmodule PhoenixPaasWeb.UserAuthTest do
       assert conn.assigns.current_scope.user.id == user.id
       assert conn.assigns.current_scope.user.authenticated_at == user.authenticated_at
       assert new_token = get_session(conn, :user_token)
-      assert new_token != token
+      assert Accounts.normalize_session_token(new_token) != token
       assert %{value: new_signed_token, max_age: max_age} = conn.resp_cookies[@remember_me_cookie]
       assert new_signed_token != signed_token
       assert max_age == @remember_me_cookie_max_age

@@ -272,7 +272,47 @@ defmodule PhoenixPaasWeb.CoreComponents do
     """
   end
 
-  # All other inputs text, datetime-local, url, password, etc. are handled here...
+  def input(%{type: "password"} = assigns) do
+    ~H"""
+    <div class="fieldset mb-2">
+      <label for={@id}>
+        <span :if={@label} class="label mb-1">{@label}</span>
+        <div class="relative" data-password-field id={"#{@id}-wrapper"}>
+          <input
+            type="password"
+            name={@name}
+            id={@id}
+            value={Phoenix.HTML.Form.normalize_value("password", @value)}
+            class={[
+              @class || "w-full input",
+              "pr-10",
+              @errors != [] && (@error_class || "input-error")
+            ]}
+            {@rest}
+          />
+          <button
+            :if={!@rest[:disabled] && !@rest[:readonly]}
+            type="button"
+            data-password-toggle
+            class="absolute inset-y-0 right-0 flex items-center px-3 text-hd-muted transition-colors hover:text-hd-text"
+            aria-label="Show password"
+            aria-pressed="false"
+          >
+            <span data-password-icon="show" aria-hidden="true">
+              <.icon name="hero-eye" class="size-5" />
+            </span>
+            <span data-password-icon="hide" class="hidden" aria-hidden="true">
+              <.icon name="hero-eye-slash" class="size-5" />
+            </span>
+          </button>
+        </div>
+      </label>
+      <.error :for={msg <- @errors}>{msg}</.error>
+    </div>
+    """
+  end
+
+  # All other inputs text, datetime-local, url, etc. are handled here...
   def input(assigns) do
     ~H"""
     <div class="fieldset mb-2">
