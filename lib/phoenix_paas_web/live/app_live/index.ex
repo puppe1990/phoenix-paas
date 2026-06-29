@@ -10,7 +10,6 @@ defmodule PhoenixPaasWeb.AppLive.Index do
      socket
      |> assign(:page_title, "Apps")
      |> assign(:active_tab, :apps)
-     |> assign(:browser_path, "apps")
      |> assign(:servers, Servers.list_servers(socket.assigns.current_scope))
      |> stream(:apps, Apps.list_apps(socket.assigns.current_scope))}
   end
@@ -72,7 +71,6 @@ defmodule PhoenixPaasWeb.AppLive.Index do
       flash={@flash}
       current_scope={@current_scope}
       active_tab={@active_tab}
-      browser_path={@browser_path}
       server_count={@server_count}
       app_count={@app_count}
     >

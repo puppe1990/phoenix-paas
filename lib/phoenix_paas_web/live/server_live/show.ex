@@ -13,7 +13,6 @@ defmodule PhoenixPaasWeb.ServerLive.Show do
       socket
       |> assign(:page_title, server.name)
       |> assign(:active_tab, :servers)
-      |> assign(:browser_path, "servers/#{server.id}")
       |> assign(:server, server)
       |> assign(:resize_options, Servers.list_resize_options(scope, server))
       |> assign(:selected_bundle_id, "")
@@ -87,7 +86,6 @@ defmodule PhoenixPaasWeb.ServerLive.Show do
       flash={@flash}
       current_scope={@current_scope}
       active_tab={@active_tab}
-      browser_path={@browser_path}
       server_count={@server_count}
       app_count={@app_count}
     >
