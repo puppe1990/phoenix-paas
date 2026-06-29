@@ -8,7 +8,7 @@ defmodule PhoenixPaasWeb.UserSettingsController do
 
   plug :require_sudo_mode
   plug :assign_panel_counts
-  plug :assign_email_and_password_changesets
+  plug :assign_settings_forms
 
   def edit(conn, _params) do
     render(conn, :edit)
@@ -34,7 +34,7 @@ defmodule PhoenixPaasWeb.UserSettingsController do
         |> redirect(to: ~p"/users/settings")
 
       changeset ->
-        render(conn, :edit, email_changeset: %{changeset | action: :insert})
+        render(conn, :edit, email_form: Phoenix.Component.to_form(%{changeset | action: :insert}))
     end
   end
 
@@ -50,7 +50,7 @@ defmodule PhoenixPaasWeb.UserSettingsController do
         |> UserAuth.log_in_user(user)
 
       {:error, changeset} ->
-        render(conn, :edit, password_changeset: changeset)
+        render(conn, :edit, password_form: Phoenix.Component.to_form(changeset))
     end
   end
 
@@ -78,11 +78,14 @@ defmodule PhoenixPaasWeb.UserSettingsController do
     |> assign(:app_count, length(apps))
   end
 
-  defp assign_email_and_password_changesets(conn, _opts) do
+  defp assign_settings_forms(conn, _opts) do
     user = conn.assigns.current_scope.user
 
     conn
-    |> assign(:email_changeset, Accounts.change_user_email(user))
-    |> assign(:password_changeset, Accounts.change_user_password(user))
+    |> assign(:email_form, user |> Accounts.change_user_email() |> Phoenix.Component.to_form())
+    |> assign(
+      :password_form,
+      user |> Accounts.change_user_password() |> Phoenix.Component.to_form()
+    )
   end
 end

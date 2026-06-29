@@ -49,7 +49,7 @@ defmodule PhoenixPaasWeb.UserSessionControllerTest do
       refute html =~ "Log in with email"
 
       assert html =~
-               ~s(<input type="email" name="user[email]" id="user_email" value="#{user.email}" class="w-full input" required readonly)
+               ~s(<input type="email" name="user[email]" id="user_email" value="#{user.email}" class="paas-input w-full" required readonly)
     end
   end
 

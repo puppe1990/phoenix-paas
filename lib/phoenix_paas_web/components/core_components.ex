@@ -235,11 +235,19 @@ defmodule PhoenixPaasWeb.CoreComponents do
     ~H"""
     <div class="fieldset mb-2">
       <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
+        <span
+          :if={@label}
+          class="mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider text-hd-muted"
+        >
+          {@label}
+        </span>
         <select
           id={@id}
           name={@name}
-          class={[@class || "w-full select", @errors != [] && (@error_class || "select-error")]}
+          class={[
+            @class || "paas-select w-full",
+            @errors != [] && (@error_class || "border-rose-500")
+          ]}
           multiple={@multiple}
           {@rest}
         >
@@ -256,13 +264,18 @@ defmodule PhoenixPaasWeb.CoreComponents do
     ~H"""
     <div class="fieldset mb-2">
       <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
+        <span
+          :if={@label}
+          class="mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider text-hd-muted"
+        >
+          {@label}
+        </span>
         <textarea
           id={@id}
           name={@name}
           class={[
-            @class || "w-full textarea",
-            @errors != [] && (@error_class || "textarea-error")
+            @class || "paas-input min-h-24 resize-y",
+            @errors != [] && (@error_class || "border-rose-500")
           ]}
           {@rest}
         >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
@@ -276,7 +289,12 @@ defmodule PhoenixPaasWeb.CoreComponents do
     ~H"""
     <div class="fieldset mb-2">
       <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
+        <span
+          :if={@label}
+          class="mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider text-hd-muted"
+        >
+          {@label}
+        </span>
         <div class="relative" data-password-field id={"#{@id}-wrapper"}>
           <input
             type="password"
@@ -284,9 +302,9 @@ defmodule PhoenixPaasWeb.CoreComponents do
             id={@id}
             value={Phoenix.HTML.Form.normalize_value("password", @value)}
             class={[
-              @class || "w-full input",
+              @class || "paas-input w-full",
               "pr-10",
-              @errors != [] && (@error_class || "input-error")
+              @errors != [] && (@error_class || "border-rose-500")
             ]}
             {@rest}
           />
@@ -317,15 +335,20 @@ defmodule PhoenixPaasWeb.CoreComponents do
     ~H"""
     <div class="fieldset mb-2">
       <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
+        <span
+          :if={@label}
+          class="mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider text-hd-muted"
+        >
+          {@label}
+        </span>
         <input
           type={@type}
           name={@name}
           id={@id}
           value={Phoenix.HTML.Form.normalize_value(@type, @value)}
           class={[
-            @class || "w-full input",
-            @errors != [] && (@error_class || "input-error")
+            @class || "paas-input w-full",
+            @errors != [] && (@error_class || "border-rose-500")
           ]}
           {@rest}
         />
@@ -338,8 +361,8 @@ defmodule PhoenixPaasWeb.CoreComponents do
   # Helper used by inputs to generate form errors
   defp error(assigns) do
     ~H"""
-    <p class="mt-1.5 flex gap-2 items-center text-sm text-error">
-      <.icon name="hero-exclamation-circle" class="size-5" />
+    <p class="mt-1.5 flex items-center gap-1.5 text-xs text-rose-400">
+      <.icon name="hero-exclamation-circle" class="size-3.5 shrink-0" />
       {render_slot(@inner_block)}
     </p>
     """
