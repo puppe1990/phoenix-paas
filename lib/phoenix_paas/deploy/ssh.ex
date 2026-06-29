@@ -246,7 +246,7 @@ defmodule PhoenixPaas.Deploy.Ssh do
     mix assets.deploy
 
     log "Building release #{config.release_name}"
-    mix release
+    mix release --overwrite
 
     RELEASE_DIR="#{config.release_path}/releases/build"
     sudo mkdir -p "$RELEASE_DIR"
