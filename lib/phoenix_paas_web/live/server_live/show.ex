@@ -155,6 +155,11 @@ defmodule PhoenixPaasWeb.ServerLive.Show do
             value={if(Servers.ssh_key_configured?(@server), do: "Configured", else: "Missing")}
             sub="Deploy access"
           />
+          <.info_tile
+            label="Deploy mode"
+            value={if(@server.deploy_mode == "dedicated", do: "Dedicated", else: "Shared")}
+            sub="Solo vs multi-app"
+          />
         </div>
 
         <div class="paas-card space-y-4 p-4">
