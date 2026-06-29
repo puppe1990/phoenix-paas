@@ -32,6 +32,14 @@ defmodule PhoenixPaasWeb.AppLive.Show do
       |> assign(:deploying?, active_deployment?(deployments))
       |> assign(:runtime_packages, RuntimePackages.resolve(app).packages)
       |> assign(:custom_domain_app?, app.slug == "catalogo")
+      |> then(fn socket ->
+        runtime_packages = socket.assigns.runtime_packages
+        custom_domain_app? = socket.assigns.custom_domain_app?
+
+        socket
+        |> assign(:detail_tabs, detail_tabs(custom_domain_app?, runtime_packages))
+        |> assign(:app_detail_tab, default_app_detail_tab(custom_domain_app?, runtime_packages))
+      end)
       |> schedule_poll(active_deployment?(deployments))
 
     {:ok, socket}
@@ -67,6 +75,13 @@ defmodule PhoenixPaasWeb.AppLive.Show do
 
   def handle_event("toggle_env_values", _params, socket) do
     {:noreply, assign(socket, :show_env_values?, not socket.assigns.show_env_values?)}
+  end
+
+  def handle_event("select_app_detail_tab", %{"tab" => tab}, socket) do
+    case Enum.find(socket.assigns.detail_tabs, &(Atom.to_string(&1) == tab)) do
+      nil -> {:noreply, socket}
+      tab -> {:noreply, assign(socket, :app_detail_tab, tab)}
+    end
   end
 
   def handle_event("select_app", %{"app_id" => app_id}, socket) do
@@ -177,250 +192,339 @@ defmodule PhoenixPaasWeb.AppLive.Show do
           />
         </div>
 
-        <div :if={@custom_domain_app?} id="custom-domain-checklist" class="paas-card space-y-3 p-4">
-          <div class="flex flex-wrap items-center gap-2">
-            <h3 class="font-display text-xs font-semibold text-hd-text">Custom tenant domains</h3>
-            <span class="rounded border border-hd-orange/40 bg-hd-orange/10 px-2 py-0.5 font-mono text-[9px] text-hd-orange">
-              Solo server · on-demand TLS
-            </span>
-          </div>
-          <p class="text-[11px] leading-relaxed text-hd-muted">
-            Tenants point a <span class="font-mono text-hd-text">CNAME</span>
-            to <span class="font-mono text-hd-orange">DOMAIN_CNAME_TARGET</span>
-            (set to {@app.host}), then verify DNS in the admin panel.
-            Caddy issues certificates only after the tenant domain is verified.
-          </p>
-          <ul class="space-y-1 font-mono text-[10px] text-hd-muted">
-            <li>
-              <span class="text-hd-orange">PLATFORM_HOSTS</span> — platform hostnames served directly
-            </li>
-            <li>
-              <span class="text-hd-orange">DOMAIN_CNAME_TARGET</span>
-              — CNAME anchor for tenant custom domains
-            </li>
-            <li>
-              <span class="text-hd-orange">PHX_HOST</span> — primary platform host ({@app.host})
-            </li>
-          </ul>
-        </div>
-
-        <div :if={@runtime_packages != []} id="runtime-packages" class="paas-card p-4">
-          <h3 class="font-display text-xs font-semibold text-hd-text">Runtime packages</h3>
-          <p class="mt-1 text-[11px] text-hd-muted">
-            Installed automatically on every deploy via apt.
-          </p>
-          <div class="mt-3 flex flex-wrap gap-2">
-            <span
-              :for={package <- @runtime_packages}
-              class="rounded border border-hd-border bg-hd-aside px-2 py-0.5 font-mono text-[10px] text-hd-orange"
-            >
-              {package}
-            </span>
-          </div>
-        </div>
-
-        <div id="app-env-vars" class="paas-card space-y-3 p-4">
-          <div class="flex items-start justify-between gap-3">
-            <div class="space-y-0.5">
-              <h3 class="font-display text-xs font-semibold text-hd-text">Environment variables</h3>
-              <p class="text-[11px] text-hd-muted">
-                Synced to <span class="font-mono text-hd-orange">{@env_file}</span>
-                on every deploy. <span class="text-hd-text">PHX_HOST</span>
-                is always injected from the app host ({@app.host}).
-              </p>
-            </div>
-            <button
-              :if={Enum.any?(@env_vars, & &1.sensitive?)}
-              type="button"
-              phx-click="toggle_env_values"
-              class="shrink-0 text-[10px] text-hd-orange hover:underline"
-            >
-              {if @show_env_values?, do: "Hide secrets", else: "Reveal secrets"}
-            </button>
-          </div>
-
+        <div id="app-detail-tabs" class="paas-card overflow-hidden">
           <div
-            :if={@env_vars == []}
-            class="rounded border border-dashed border-hd-border px-4 py-6 text-center text-xs text-hd-muted"
+            role="tablist"
+            aria-label="App configuration"
+            class="flex flex-wrap items-center gap-1 border-b border-hd-border bg-hd-aside p-1"
           >
-            No environment variables configured yet.
+            <.detail_tab_button
+              :if={:domains in @detail_tabs}
+              tab={:domains}
+              label="Tenant domains"
+              icon="hero-globe-alt"
+              active?={@app_detail_tab == :domains}
+            />
+            <.detail_tab_button
+              tab={:environment}
+              label="Environment"
+              icon="hero-circle-stack"
+              active?={@app_detail_tab == :environment}
+            />
+            <.detail_tab_button
+              :if={:runtime in @detail_tabs}
+              tab={:runtime}
+              label="Runtime"
+              icon="hero-cube"
+              active?={@app_detail_tab == :runtime}
+            />
+            <.detail_tab_button
+              tab={:webhook}
+              label="Webhook"
+              icon="hero-link"
+              active?={@app_detail_tab == :webhook}
+            />
+            <.detail_tab_button
+              tab={:deployments}
+              label="Deployments"
+              icon="hero-rocket-launch"
+              active?={@app_detail_tab == :deployments}
+            />
           </div>
 
-          <div :if={@env_vars != []} class="overflow-hidden rounded border border-hd-border">
-            <table class="paas-table w-full text-left font-mono">
-              <thead>
-                <tr>
-                  <th>Key</th>
-                  <th>Value</th>
-                </tr>
-              </thead>
-              <tbody id="env-vars-list">
-                <tr :for={env_var <- @env_vars} id={"env-var-#{env_var.key}"}>
-                  <td class="align-top text-[11px] text-hd-orange">{env_var.key}</td>
-                  <td class="max-w-0">
-                    <span class="block truncate text-[11px] text-hd-text">
-                      {Apps.display_env_value(env_var.key, env_var.value, @show_env_values?)}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="paas-card space-y-3 p-4">
-          <div class="space-y-0.5">
-            <h3 class="font-display text-xs font-semibold text-hd-text">
-              GitHub Push webhook URL Credentials
-            </h3>
-            <p class="text-[11px] text-hd-muted">
-              Configure these properties on GitHub (Repository Settings → Webhooks) to enable instant automatic deploys on push
-            </p>
-          </div>
-          <div class="grid gap-3 md:grid-cols-2">
-            <.copy_field id="webhook-url" label="Payload URL" value={@webhook_url} mono />
-            <div class="space-y-1">
-              <div class="flex items-center justify-between">
-                <span class="font-mono text-[9px] font-semibold uppercase tracking-wider text-hd-muted">
-                  Webhook Secret token
+          <div class="p-4">
+            <div :if={@app_detail_tab == :domains} id="custom-domain-checklist" class="space-y-3">
+              <div class="flex flex-wrap items-center gap-2">
+                <h3 class="font-display text-xs font-semibold text-hd-text">Custom tenant domains</h3>
+                <span class="rounded border border-hd-orange/40 bg-hd-orange/10 px-2 py-0.5 font-mono text-[9px] text-hd-orange">
+                  Solo server · on-demand TLS
                 </span>
+              </div>
+              <p class="text-[11px] leading-relaxed text-hd-muted">
+                Tenants point a <span class="font-mono text-hd-text">CNAME</span>
+                to <span class="font-mono text-hd-orange">DOMAIN_CNAME_TARGET</span>
+                (set to {@app.host}), then verify DNS in the admin panel.
+                Caddy issues certificates only after the tenant domain is verified.
+              </p>
+              <ul class="space-y-1 font-mono text-[10px] text-hd-muted">
+                <li>
+                  <span class="text-hd-orange">PLATFORM_HOSTS</span>
+                  — platform hostnames served directly
+                </li>
+                <li>
+                  <span class="text-hd-orange">DOMAIN_CNAME_TARGET</span>
+                  — CNAME anchor for tenant custom domains
+                </li>
+                <li>
+                  <span class="text-hd-orange">PHX_HOST</span> — primary platform host ({@app.host})
+                </li>
+              </ul>
+            </div>
+
+            <div :if={@app_detail_tab == :environment} id="app-env-vars" class="space-y-3">
+              <div class="flex items-start justify-between gap-3">
+                <div class="space-y-0.5">
+                  <h3 class="font-display text-xs font-semibold text-hd-text">
+                    Environment variables
+                  </h3>
+                  <p class="text-[11px] text-hd-muted">
+                    Synced to <span class="font-mono text-hd-orange">{@env_file}</span>
+                    on every deploy. <span class="text-hd-text">PHX_HOST</span>
+                    is always injected from the app host ({@app.host}).
+                  </p>
+                </div>
                 <button
+                  :if={Enum.any?(@env_vars, & &1.sensitive?)}
                   type="button"
-                  phx-click="toggle_secret"
-                  class="text-[10px] text-hd-orange hover:underline"
+                  phx-click="toggle_env_values"
+                  class="shrink-0 text-[10px] text-hd-orange hover:underline"
                 >
-                  {if @show_secret?, do: "Hide", else: "Reveal"}
+                  {if @show_env_values?, do: "Hide secrets", else: "Reveal secrets"}
                 </button>
               </div>
-              <.copy_field
-                :if={@show_secret?}
-                id="webhook-secret"
-                label=""
-                value={@app.webhook_secret}
-                mono
-              />
+
               <div
-                :if={not @show_secret?}
-                id="webhook-secret-masked"
-                class="rounded border border-hd-border bg-hd-aside px-2.5 py-1.5 font-mono text-xs text-hd-muted/60"
+                :if={@env_vars == []}
+                class="rounded border border-dashed border-hd-border px-4 py-6 text-center text-xs text-hd-muted"
               >
-                {String.duplicate("•", 32)}
+                No environment variables configured yet.
+              </div>
+
+              <div :if={@env_vars != []} class="overflow-hidden rounded border border-hd-border">
+                <table class="paas-table w-full text-left font-mono">
+                  <thead>
+                    <tr>
+                      <th>Key</th>
+                      <th>Value</th>
+                    </tr>
+                  </thead>
+                  <tbody id="env-vars-list">
+                    <tr :for={env_var <- @env_vars} id={"env-var-#{env_var.key}"}>
+                      <td class="align-top text-[11px] text-hd-orange">{env_var.key}</td>
+                      <td class="max-w-0">
+                        <span class="block truncate text-[11px] text-hd-text">
+                          {Apps.display_env_value(env_var.key, env_var.value, @show_env_values?)}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
-          </div>
-        </div>
 
-        <div :if={@viewed_deployment} class="space-y-1.5">
-          <div class="flex flex-wrap items-center justify-between gap-2 px-0.5">
-            <div class="space-y-0.5">
-              <span class="block font-mono text-[10px] font-semibold uppercase tracking-widest text-hd-muted">
-                Build Output Stream logs
-              </span>
-              <span
-                :if={@selected_deployment_id && @viewed_deployment}
-                class="font-mono text-[10px] text-hd-muted"
-              >
-                Viewing deploy #{@viewed_deployment.id} · click another row in history to switch
-              </span>
-            </div>
-            <div class="flex flex-wrap items-center gap-3">
-              <span
-                :if={Deployments.duration(@viewed_deployment)}
-                class="font-mono text-[11px] tabular-nums text-hd-text"
-              >
-                Duration: {Deployments.format_duration(Deployments.duration(@viewed_deployment))}
-              </span>
-              <span
-                :if={@deploying?}
-                class="flex items-center gap-1 font-mono text-[11px] text-hd-orange"
-              >
-                <span class="size-1 animate-ping rounded-full bg-hd-orange" /> Compiling OTP release…
-              </span>
-            </div>
-          </div>
-          <div :if={@deploying?} class="h-1 overflow-hidden rounded-full bg-hd-aside">
-            <div class="deploy-progress h-full rounded-full" />
-          </div>
-          <.deploy_terminal
-            id={"deploy-terminal-#{@viewed_deployment.id}"}
-            deployment={@viewed_deployment}
-            active?={@deploying?}
-            duration={Deployments.format_duration(Deployments.duration(@viewed_deployment))}
-          />
-        </div>
-
-        <div class="overflow-hidden rounded-md border border-hd-border bg-hd-card">
-          <div class="border-b border-hd-border bg-hd-aside px-4 py-2">
-            <span class="font-display text-xs font-semibold text-hd-text">
-              Deployments Version History
-            </span>
-          </div>
-          <div id="deployments" class="overflow-x-auto">
-            <table class="paas-table w-full text-left font-mono">
-              <thead>
-                <tr>
-                  <th>Build Status</th>
-                  <th>Commit/SHA Code</th>
-                  <th>Trigger</th>
-                  <th>Duration</th>
-                  <th>Executed Timestamp</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr :if={@deployments == []}>
-                  <td colspan="6" class="py-6 text-center text-xs text-hd-muted">
-                    No deployments registered yet. Click "Deploy now" to launch container builds.
-                  </td>
-                </tr>
-                <tr
-                  :for={deployment <- @deployments}
-                  id={"deployment-row-#{deployment.id}"}
-                  class={[
-                    "transition-colors",
-                    @viewed_deployment && @viewed_deployment.id == deployment.id &&
-                      "bg-hd-aside/60"
-                  ]}
+            <div :if={@app_detail_tab == :runtime} id="runtime-packages" class="space-y-3">
+              <div class="space-y-0.5">
+                <h3 class="font-display text-xs font-semibold text-hd-text">Runtime packages</h3>
+                <p class="text-[11px] text-hd-muted">
+                  Installed automatically on every deploy via apt.
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <span
+                  :for={package <- @runtime_packages}
+                  class="rounded border border-hd-border bg-hd-aside px-2 py-0.5 font-mono text-[10px] text-hd-orange"
                 >
-                  <td><.deploy_status_badge status={deployment.status} /></td>
-                  <td>
-                    <span class="rounded border border-hd-border bg-hd-aside px-1.5 py-0.5 text-[10px] text-hd-orange">
-                      {deployment.git_sha}
+                  {package}
+                </span>
+              </div>
+            </div>
+
+            <div :if={@app_detail_tab == :webhook} id="app-webhook" class="space-y-3">
+              <div class="space-y-0.5">
+                <h3 class="font-display text-xs font-semibold text-hd-text">
+                  GitHub Push webhook URL Credentials
+                </h3>
+                <p class="text-[11px] text-hd-muted">
+                  Configure these properties on GitHub (Repository Settings → Webhooks) to enable instant automatic deploys on push
+                </p>
+              </div>
+              <div class="grid gap-3 md:grid-cols-2">
+                <.copy_field id="webhook-url" label="Payload URL" value={@webhook_url} mono />
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <span class="font-mono text-[9px] font-semibold uppercase tracking-wider text-hd-muted">
+                      Webhook Secret token
                     </span>
-                  </td>
-                  <td class="text-[11px] text-hd-muted">{deployment.triggered_by}</td>
-                  <td class="text-[11px] tabular-nums text-hd-text">
-                    {Deployments.format_duration(Deployments.duration(deployment))}
-                  </td>
-                  <td class="text-[11px] text-hd-muted">
-                    {format_datetime(deployment.started_at || deployment.inserted_at)}
-                  </td>
-                  <td class="text-right">
                     <button
-                      :if={not @deploying?}
-                      id={"view-deploy-log-#{deployment.id}"}
                       type="button"
-                      phx-click="view_deploy_log"
-                      phx-value-id={deployment.id}
-                      class={[
-                        "rounded border px-2 py-0.5 font-mono text-[10px] transition-colors",
-                        @viewed_deployment && @viewed_deployment.id == deployment.id &&
-                          "border-hd-orange/50 bg-hd-orange/10 text-hd-orange",
-                        (!@viewed_deployment || @viewed_deployment.id != deployment.id) &&
-                          "border-hd-border text-hd-muted hover:border-hd-orange/40 hover:text-hd-orange"
-                      ]}
+                      phx-click="toggle_secret"
+                      class="text-[10px] text-hd-orange hover:underline"
                     >
-                      View log
+                      {if @show_secret?, do: "Hide", else: "Reveal"}
                     </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                  </div>
+                  <.copy_field
+                    :if={@show_secret?}
+                    id="webhook-secret"
+                    label=""
+                    value={@app.webhook_secret}
+                    mono
+                  />
+                  <div
+                    :if={not @show_secret?}
+                    id="webhook-secret-masked"
+                    class="rounded border border-hd-border bg-hd-aside px-2.5 py-1.5 font-mono text-xs text-hd-muted/60"
+                  >
+                    {String.duplicate("•", 32)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div :if={@app_detail_tab == :deployments} id="app-deployments" class="space-y-4">
+              <div :if={@viewed_deployment} class="space-y-1.5">
+                <div class="flex flex-wrap items-center justify-between gap-2 px-0.5">
+                  <div class="space-y-0.5">
+                    <span class="block font-mono text-[10px] font-semibold uppercase tracking-widest text-hd-muted">
+                      Build Output Stream logs
+                    </span>
+                    <span
+                      :if={@selected_deployment_id && @viewed_deployment}
+                      class="font-mono text-[10px] text-hd-muted"
+                    >
+                      Viewing deploy #{@viewed_deployment.id} · click another row in history to switch
+                    </span>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-3">
+                    <span
+                      :if={Deployments.duration(@viewed_deployment)}
+                      class="font-mono text-[11px] tabular-nums text-hd-text"
+                    >
+                      Duration: {Deployments.format_duration(Deployments.duration(@viewed_deployment))}
+                    </span>
+                    <span
+                      :if={@deploying?}
+                      class="flex items-center gap-1 font-mono text-[11px] text-hd-orange"
+                    >
+                      <span class="size-1 animate-ping rounded-full bg-hd-orange" />
+                      Compiling OTP release…
+                    </span>
+                  </div>
+                </div>
+                <div :if={@deploying?} class="h-1 overflow-hidden rounded-full bg-hd-aside">
+                  <div class="deploy-progress h-full rounded-full" />
+                </div>
+                <.deploy_terminal
+                  id={"deploy-terminal-#{@viewed_deployment.id}"}
+                  deployment={@viewed_deployment}
+                  active?={@deploying?}
+                  duration={Deployments.format_duration(Deployments.duration(@viewed_deployment))}
+                />
+              </div>
+
+              <div class="overflow-hidden rounded-md border border-hd-border bg-hd-card">
+                <div class="border-b border-hd-border bg-hd-aside px-4 py-2">
+                  <span class="font-display text-xs font-semibold text-hd-text">
+                    Deployments Version History
+                  </span>
+                </div>
+                <div id="deployments" class="overflow-x-auto">
+                  <table class="paas-table w-full text-left font-mono">
+                    <thead>
+                      <tr>
+                        <th>Build Status</th>
+                        <th>Commit/SHA Code</th>
+                        <th>Trigger</th>
+                        <th>Duration</th>
+                        <th>Executed Timestamp</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr :if={@deployments == []}>
+                        <td colspan="6" class="py-6 text-center text-xs text-hd-muted">
+                          No deployments registered yet. Click "Deploy now" to launch container builds.
+                        </td>
+                      </tr>
+                      <tr
+                        :for={deployment <- @deployments}
+                        id={"deployment-row-#{deployment.id}"}
+                        class={[
+                          "transition-colors",
+                          @viewed_deployment && @viewed_deployment.id == deployment.id &&
+                            "bg-hd-aside/60"
+                        ]}
+                      >
+                        <td><.deploy_status_badge status={deployment.status} /></td>
+                        <td>
+                          <span class="rounded border border-hd-border bg-hd-aside px-1.5 py-0.5 text-[10px] text-hd-orange">
+                            {deployment.git_sha}
+                          </span>
+                        </td>
+                        <td class="text-[11px] text-hd-muted">{deployment.triggered_by}</td>
+                        <td class="text-[11px] tabular-nums text-hd-text">
+                          {Deployments.format_duration(Deployments.duration(deployment))}
+                        </td>
+                        <td class="text-[11px] text-hd-muted">
+                          {format_datetime(deployment.started_at || deployment.inserted_at)}
+                        </td>
+                        <td class="text-right">
+                          <button
+                            :if={not @deploying?}
+                            id={"view-deploy-log-#{deployment.id}"}
+                            type="button"
+                            phx-click="view_deploy_log"
+                            phx-value-id={deployment.id}
+                            class={[
+                              "rounded border px-2 py-0.5 font-mono text-[10px] transition-colors",
+                              @viewed_deployment && @viewed_deployment.id == deployment.id &&
+                                "border-hd-orange/50 bg-hd-orange/10 text-hd-orange",
+                              (!@viewed_deployment || @viewed_deployment.id != deployment.id) &&
+                                "border-hd-border text-hd-muted hover:border-hd-orange/40 hover:text-hd-orange"
+                            ]}
+                          >
+                            View log
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </Layouts.app>
     """
+  end
+
+  attr :tab, :atom, required: true
+  attr :label, :string, required: true
+  attr :icon, :string, required: true
+  attr :active?, :boolean, required: true
+
+  defp detail_tab_button(assigns) do
+    ~H"""
+    <button
+      id={"app-detail-tab-#{@tab}"}
+      type="button"
+      role="tab"
+      aria-selected={@active?}
+      phx-click="select_app_detail_tab"
+      phx-value-tab={Atom.to_string(@tab)}
+      class={[
+        "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold tracking-wide transition-all",
+        @active? && "border border-hd-border bg-hd-card text-hd-orange",
+        !@active? && "text-hd-muted hover:text-hd-text"
+      ]}
+    >
+      <.icon name={@icon} class="size-3.5" />
+      <span>{@label}</span>
+    </button>
+    """
+  end
+
+  defp detail_tabs(custom_domain_app?, runtime_packages) do
+    []
+    |> then(fn tabs -> if custom_domain_app?, do: [:domains | tabs], else: tabs end)
+    |> Kernel.++([:environment])
+    |> then(fn tabs -> if runtime_packages != [], do: tabs ++ [:runtime], else: tabs end)
+    |> Kernel.++([:webhook, :deployments])
+  end
+
+  defp default_app_detail_tab(custom_domain_app?, runtime_packages) do
+    detail_tabs(custom_domain_app?, runtime_packages) |> List.first()
   end
 
   defp active_deployment?(deployments) do
