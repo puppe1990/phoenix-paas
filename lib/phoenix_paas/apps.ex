@@ -6,7 +6,7 @@ defmodule PhoenixPaas.Apps do
   import Ecto.Query, warn: false
   alias PhoenixPaas.Accounts.Scope
   alias PhoenixPaas.Repo
-  alias PhoenixPaas.Apps.{App, AppEnvVar}
+  alias PhoenixPaas.Apps.{App, AppEnvVar, Provisioning}
   alias PhoenixPaas.Github
 
   require Logger
@@ -89,6 +89,10 @@ defmodule PhoenixPaas.Apps do
 
   def change_app(app, attrs \\ %{}) do
     App.changeset(app, attrs)
+  end
+
+  def provision_from_repo(github_repo, servers \\ []) do
+    Provisioning.preset_from_repo(github_repo, servers)
   end
 
   def put_env_var(%App{} = app, key, value) when is_binary(key) and is_binary(value) do
