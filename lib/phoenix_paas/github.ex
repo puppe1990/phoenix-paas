@@ -56,8 +56,9 @@ defmodule PhoenixPaas.Github do
   Returns a list of `{full_name, full_name}` tuples sorted by name.
   """
   def list_repos do
-    with {:ok, token} <- api_token() do
-      list_repos(token, 1, [])
+    with {:ok, token} <- api_token(),
+         {:ok, repos} <- list_repos(token, 1, []) do
+      repos
     else
       {:error, :missing_token} -> []
       {:error, _reason} -> []
