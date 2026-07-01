@@ -91,7 +91,7 @@ defmodule PhoenixPaas.Deploy.ServerProvision do
         sudo bash -c 'set -a; source #{config.env_file}; set +a; #{config.release_path}/current/bin/migrate'
       elif [[ -x #{release_bin} ]]; then
         log "Running migrations (release eval)"
-        sudo bash -c 'set -a; source #{config.env_file}; set +a; #{release_bin} eval "Application.load(:#{otp_app}); for repo <- Application.fetch_env!(:#{otp_app}, :ecto_repos), do: {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))"'
+        sudo bash -c 'set -a; source #{config.env_file}; set +a; #{release_bin} eval "#{migration_eval(otp_app)}"'
       else
         log "Skipping migrations (no migrate command)"
       fi
@@ -107,6 +107,13 @@ defmodule PhoenixPaas.Deploy.ServerProvision do
     log "Reloading Caddy (TLS/DNS catch-up)"
     sudo systemctl reload caddy 2>/dev/null || sudo systemctl restart caddy
     """
+  end
+
+  defp migration_eval(otp_app) when is_binary(otp_app) do
+    """
+    Application.load(:#{otp_app}); case Application.get_env(:#{otp_app}, :ecto_repos, []) do [] -> :ok; repos -> for repo <- repos, do: {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true)) end
+    """
+    |> String.trim()
   end
 
   defp escape_unit_description(name) when is_binary(name) do

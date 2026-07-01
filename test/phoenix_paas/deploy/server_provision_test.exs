@@ -47,7 +47,31 @@ defmodule PhoenixPaas.Deploy.ServerProvisionTest do
 
     assert script =~ "bin/migrate"
     assert script =~ "release eval"
-    assert script =~ "Application.fetch_env!(:phoenix_tts, :ecto_repos)"
+    assert script =~ "Ecto.Migrator.with_repo"
+  end
+
+  test "migrate_script skips release eval migrations when app has no ecto_repos" do
+    config = %{
+      release_path: "/opt/rapid_tools",
+      release_name: "rapid_tools",
+      env_file: "/etc/rapid_tools/env"
+    }
+
+    script = ServerProvision.migrate_script(config)
+
+    assert script =~ "Application.get_env(:rapid_tools, :ecto_repos, [])"
+    assert script =~ "[] -> :ok"
+    refute script =~ "fetch_env!"
+  end
+
+  test "migrate_script still runs ecto migrations when ecto_repos is configured", %{
+    config: config
+  } do
+    script = ServerProvision.migrate_script(config)
+
+    assert script =~ "Application.get_env(:phoenix_tts, :ecto_repos, [])"
+    assert script =~ "Ecto.Migrator.with_repo"
+    refute script =~ "fetch_env!"
   end
 
   test "reload_caddy_script reloads or restarts caddy", %{config: _config} do
