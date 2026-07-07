@@ -105,7 +105,7 @@ defmodule PhoenixPaas.Seeds do
       github_repo: "puppe1990/controle-agente-viagens",
       branch: "main",
       host: "vip.gestaobem.com",
-      port: 4005,
+      port: 4007,
       systemd_unit: "controle_agente_viagens",
       release_path: "/opt/controle_agente_viagens_phx"
     })

@@ -58,7 +58,7 @@ defmodule PhoenixPaas.Apps.Provisioning do
       name: "VipTravel",
       slug: "controle-agente-viagens",
       host: "vip.gestaobem.com",
-      port: 4005,
+      port: 4007,
       systemd_unit: "controle_agente_viagens",
       release_path: "/opt/controle_agente_viagens_phx"
     }
