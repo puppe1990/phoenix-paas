@@ -99,6 +99,17 @@ defmodule PhoenixPaas.Seeds do
       release_path: "/opt/phoenix_tts"
     })
 
+    seed_app(scope, server, tenant_id, %{
+      name: "VipTravel",
+      slug: "controle-agente-viagens",
+      github_repo: "puppe1990/controle-agente-viagens",
+      branch: "main",
+      host: "vip.gestaobem.com",
+      port: 4005,
+      systemd_unit: "controle_agente_viagens",
+      release_path: "/opt/controle_agente_viagens_phx"
+    })
+
     catalog_server = maybe_seed_catalog(scope, tenant_id, opts)
 
     {:ok, %{user: user, scope: scope, server: server, catalog_server: catalog_server}}

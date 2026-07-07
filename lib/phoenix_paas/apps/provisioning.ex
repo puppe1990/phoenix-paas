@@ -53,6 +53,14 @@ defmodule PhoenixPaas.Apps.Provisioning do
       systemd_unit: "catalog_platform",
       release_path: "/opt/catalog_platform",
       server_name: "catalogo-lightsail"
+    },
+    "puppe1990/controle-agente-viagens" => %{
+      name: "VipTravel",
+      slug: "controle-agente-viagens",
+      host: "vip.gestaobem.com",
+      port: 4005,
+      systemd_unit: "controle_agente_viagens",
+      release_path: "/opt/controle_agente_viagens_phx"
     }
   }
 
