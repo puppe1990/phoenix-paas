@@ -61,6 +61,15 @@ defmodule PhoenixPaas.Apps.Provisioning do
       port: 4007,
       systemd_unit: "controle_agente_viagens",
       release_path: "/opt/controle_agente_viagens_phx"
+    },
+    "puppe1990/campanha-ops" => %{
+      name: "Campanha",
+      slug: "campanha",
+      host: "campanha.gestaobem.com",
+      port: 4000,
+      systemd_unit: "campanha",
+      release_path: "/opt/campanha",
+      server_name: "campanha-lightsail"
     }
   }
 

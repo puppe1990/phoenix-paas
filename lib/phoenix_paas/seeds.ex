@@ -111,8 +111,16 @@ defmodule PhoenixPaas.Seeds do
     })
 
     catalog_server = maybe_seed_catalog(scope, tenant_id, opts)
+    campanha_server = maybe_seed_campanha(scope, tenant_id, opts)
 
-    {:ok, %{user: user, scope: scope, server: server, catalog_server: catalog_server}}
+    {:ok,
+     %{
+       user: user,
+       scope: scope,
+       server: server,
+       catalog_server: catalog_server,
+       campanha_server: campanha_server
+     }}
   end
 
   defp ensure_shared_server(scope, tenant_id, opts) do
@@ -127,6 +135,43 @@ defmodule PhoenixPaas.Seeds do
       nil ->
         {:ok, server} = Servers.create_server(scope, shared_server_seed_attrs(opts))
         server
+    end
+  end
+
+  defp maybe_seed_campanha(scope, tenant_id, opts) do
+    case campanha_server_ip(opts) do
+      nil ->
+        nil
+
+      host_ip ->
+        campanha_server =
+          case Repo.one(
+                 from s in Servers.Server,
+                   where: s.tenant_id == ^tenant_id and s.name == "campanha-lightsail",
+                   limit: 1
+               ) do
+            %Servers.Server{} = existing ->
+              maybe_update_campanha_server(existing, host_ip, opts)
+
+            nil ->
+              {:ok, server} =
+                Servers.create_server(scope, campanha_server_seed_attrs(host_ip, opts))
+
+              server
+          end
+
+        seed_app(scope, campanha_server, tenant_id, %{
+          name: "Campanha",
+          slug: "campanha",
+          github_repo: "puppe1990/campanha-ops",
+          branch: "main",
+          host: "campanha.gestaobem.com",
+          port: 4000,
+          systemd_unit: "campanha",
+          release_path: "/opt/campanha"
+        })
+
+        campanha_server
     end
   end
 
@@ -164,6 +209,20 @@ defmodule PhoenixPaas.Seeds do
         })
 
         catalog_server
+    end
+  end
+
+  defp maybe_update_campanha_server(%Servers.Server{} = server, host_ip, opts) do
+    changes =
+      %{host_ip: host_ip, deploy_mode: "dedicated", aws_instance_name: "campanha-lightsail"}
+      |> maybe_put_ssh_key_attr(opts)
+
+    if Enum.any?(changes, fn {key, value} -> Map.get(server, key) != value end) do
+      server
+      |> Servers.Server.changeset(changes)
+      |> Repo.update!()
+    else
+      server
     end
   end
 
@@ -240,6 +299,22 @@ defmodule PhoenixPaas.Seeds do
     end
   end
 
+  defp campanha_server_seed_attrs(host_ip, opts) do
+    attrs = %{
+      name: "campanha-lightsail",
+      host_ip: host_ip,
+      ssh_user: "ubuntu",
+      region: "us-east-1",
+      deploy_mode: "dedicated",
+      aws_instance_name: "campanha-lightsail"
+    }
+
+    case read_ssh_key(opts) do
+      nil -> attrs
+      key -> Map.put(attrs, :ssh_private_key, key)
+    end
+  end
+
   defp catalog_server_seed_attrs(host_ip, opts) do
     attrs = %{
       name: "catalogo-lightsail",
@@ -259,6 +334,11 @@ defmodule PhoenixPaas.Seeds do
   defp catalog_server_ip(opts) do
     Keyword.get(opts, :catalog_server_ip) ||
       System.get_env("CATALOGO_SERVER_IP")
+  end
+
+  defp campanha_server_ip(opts) do
+    Keyword.get(opts, :campanha_server_ip) ||
+      System.get_env("CAMPANHA_SERVER_IP")
   end
 
   defp maybe_backfill_server_ssh_key(%Servers.Server{} = server, opts) do

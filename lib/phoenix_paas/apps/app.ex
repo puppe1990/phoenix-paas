@@ -61,6 +61,8 @@ defmodule PhoenixPaas.Apps.App do
   def release_name("trip-planner"), do: "trip_planner_ia"
   def release_name("catalogo"), do: "catalog_platform"
   def release_name("controle-agente-viagens"), do: "controle_agente_viagens_phx"
+  def release_name("campanha"), do: "campanha"
+  def release_name("campanha-ops"), do: "campanha"
   def release_name(slug) when is_binary(slug), do: String.replace(slug, "-", "_")
 
   def default_systemd_unit("trip-planner"), do: "trip_planner_ia"
