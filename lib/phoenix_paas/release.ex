@@ -31,6 +31,38 @@ defmodule PhoenixPaas.Release do
     :ok
   end
 
+  @doc """
+  Re-encrypts and stores an SSH private key for a deploy server.
+
+  Use when a Lightsail key was missing or corrupt in the panel database:
+
+      bin/phoenix_paas eval 'PhoenixPaas.Release.fix_server_ssh("campanha-lightsail", "/home/ubuntu/lightsail-key.pem")'
+  """
+  def fix_server_ssh(server_name, key_path)
+      when is_binary(server_name) and is_binary(key_path) do
+    load_app()
+    import Ecto.Query
+
+    {:ok, _, _} =
+      Ecto.Migrator.with_repo(PhoenixPaas.Repo, fn _repo ->
+        {:ok, _} = PhoenixPaas.Vault.start_link()
+        key = File.read!(key_path)
+
+        server =
+          PhoenixPaas.Repo.one!(
+            from s in PhoenixPaas.Servers.Server, where: s.name == ^server_name, limit: 1
+          )
+
+        server
+        |> PhoenixPaas.Servers.Server.changeset(%{ssh_private_key: key})
+        |> PhoenixPaas.Repo.update!()
+
+        IO.puts("SSH key updated for #{server_name}")
+      end)
+
+    :ok
+  end
+
   defp repos do
     Application.fetch_env!(@app, :ecto_repos)
   end
