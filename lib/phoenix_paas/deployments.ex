@@ -31,7 +31,7 @@ defmodule PhoenixPaas.Deployments do
   def enqueue(%App{} = app, attrs) do
     with {:ok, deployment} <- create_deployment(app, attrs),
          {:ok, job} <-
-           %{deployment_id: deployment.id}
+           %{deployment_id: deployment.id, server_id: app.server_id}
            |> PhoenixPaas.Workers.DeployWorker.new()
            |> Oban.insert() do
       {:ok, job}
@@ -57,19 +57,105 @@ defmodule PhoenixPaas.Deployments do
     )
   end
 
-  def mark_running(%Deployment{id: id}) do
-    case Repo.get(Deployment, id) do
-      %Deployment{status: :queued} = deployment ->
-        deployment
-        |> Deployment.changeset(%{status: :running, started_at: DateTime.utc_now(:second)})
-        |> Repo.update()
+  @doc """
+  Transitions a queued deployment to running when the target server is free.
 
-      %Deployment{} ->
+  Returns:
+  - `{:ok, deployment}` when claimed
+  - `{:error, :server_busy}` when another deploy is already running on the same
+    server, or an older queued deploy is still waiting (FIFO per server)
+  - `{:error, :invalid_status}` when the deployment is not queued
+  """
+  def claim_running(%Deployment{id: id}) do
+    case Repo.transaction(fn -> do_claim_running(id) end) do
+      {:ok, deployment} ->
+        {:ok, deployment}
+
+      {:error, :server_busy} ->
+        {:error, :server_busy}
+
+      {:error, :invalid_status} ->
         {:error, :invalid_status}
 
-      nil ->
-        {:error, :invalid_status}
+      {:error, reason} ->
+        {:error, reason}
     end
+  end
+
+  def mark_running(%Deployment{} = deployment) do
+    claim_running(deployment)
+  end
+
+  defp do_claim_running(id) do
+    deployment =
+      Deployment
+      |> Repo.get!(id)
+      |> Repo.preload(:app)
+
+    cond do
+      deployment.status != :queued ->
+        Repo.rollback(:invalid_status)
+
+      server_has_blocking_deploy?(deployment) ->
+        Repo.rollback(:server_busy)
+
+      true ->
+        case deployment
+             |> Deployment.changeset(%{
+               status: :running,
+               started_at: DateTime.utc_now(:second)
+             })
+             |> Repo.update() do
+          {:ok, running} ->
+            if concurrent_running_on_server_count(running) > 1 do
+              _ =
+                running
+                |> Deployment.changeset(%{status: :queued, started_at: nil})
+                |> Repo.update()
+
+              Repo.rollback(:server_busy)
+            else
+              running
+            end
+
+          {:error, changeset} ->
+            Repo.rollback(changeset)
+        end
+    end
+  end
+
+  @doc false
+  def server_has_blocking_deploy?(%Deployment{id: id, app: %App{server_id: server_id}}) do
+    Repo.exists?(
+      from d in Deployment,
+        join: a in App,
+        on: a.id == d.app_id,
+        where: a.server_id == ^server_id and d.id != ^id,
+        where: d.status == :running or (d.status == :queued and d.id < ^id)
+    )
+  end
+
+  def server_has_blocking_deploy?(%Deployment{id: id}) do
+    id
+    |> then(&Repo.get!(Deployment, &1))
+    |> Repo.preload(:app)
+    |> server_has_blocking_deploy?()
+  end
+
+  defp concurrent_running_on_server_count(%Deployment{app_id: app_id}) do
+    server_id =
+      from(a in App, where: a.id == ^app_id, select: a.server_id)
+      |> Repo.one!()
+
+    Repo.aggregate(
+      from(d in Deployment,
+        join: a in App,
+        on: a.id == d.app_id,
+        where: a.server_id == ^server_id and d.status == :running
+      ),
+      :count,
+      :id
+    )
   end
 
   def mark_success(%Deployment{id: id}, message) when is_binary(message) do
