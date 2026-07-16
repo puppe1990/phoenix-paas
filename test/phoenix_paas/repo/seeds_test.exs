@@ -15,6 +15,7 @@ defmodule PhoenixPaas.Repo.SeedsTest do
     assert Enum.any?(apps, &(&1.slug == "open-drive"))
     assert Enum.any?(apps, &(&1.slug == "mass-transcriptor"))
     assert Enum.any?(apps, &(&1.slug == "phoenix-tts"))
+    assert Enum.any?(apps, &(&1.slug == "controle-agente-viagens"))
 
     rapid_tools = Enum.find(apps, &(&1.slug == "rapid-tools"))
     assert rapid_tools.host == "tools.gestaobem.com"
@@ -46,6 +47,7 @@ defmodule PhoenixPaas.Repo.SeedsTest do
     slugs = Apps.list_apps(scope) |> Enum.map(& &1.slug) |> Enum.sort()
 
     assert slugs == [
+             "controle-agente-viagens",
              "mass-transcriptor",
              "open-drive",
              "phoenix-tts",
@@ -66,10 +68,12 @@ defmodule PhoenixPaas.Repo.SeedsTest do
     assert Enum.any?(matheus_apps, &(&1.slug == "open-drive"))
     assert Enum.any?(matheus_apps, &(&1.slug == "mass-transcriptor"))
     assert Enum.any?(matheus_apps, &(&1.slug == "phoenix-tts"))
+    assert Enum.any?(matheus_apps, &(&1.slug == "controle-agente-viagens"))
     refute Enum.any?(other_apps, &(&1.slug == "trip-planner"))
     refute Enum.any?(other_apps, &(&1.slug == "rapid-tools"))
     refute Enum.any?(other_apps, &(&1.slug == "open-drive"))
     refute Enum.any?(other_apps, &(&1.slug == "mass-transcriptor"))
     refute Enum.any?(other_apps, &(&1.slug == "phoenix-tts"))
+    refute Enum.any?(other_apps, &(&1.slug == "controle-agente-viagens"))
   end
 end
