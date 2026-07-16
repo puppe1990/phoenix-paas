@@ -4,22 +4,38 @@ defmodule PhoenixPaas.Workers.DeployWorker do
 
   alias PhoenixPaas.Deployments
 
+  # Wait between attempts when another deploy is using the same Lightsail host.
+  @server_busy_snooze_seconds 20
+
   @impl Oban.Worker
   def perform(%Oban.Job{args: args}) when is_map(args) do
     deployment_id = Map.get(args, "deployment_id") || Map.get(args, :deployment_id)
     deployment = Deployments.get_deployment!(deployment_id)
 
-    with {:ok, running} <- Deployments.mark_running(deployment),
-         running = Deployments.get_deployment!(running.id),
-         {:ok, message} <- runner().deploy(running),
+    case Deployments.claim_running(deployment) do
+      {:ok, running} ->
+        run_deploy(running)
+
+      {:error, :server_busy} ->
+        {:snooze, @server_busy_snooze_seconds}
+
+      {:error, :invalid_status} ->
+        # Already finished or cancelled by another transition.
+        :ok
+
+      {:error, reason} ->
+        _ = Deployments.mark_failed(deployment, format_error(reason))
+        {:error, reason}
+    end
+  end
+
+  defp run_deploy(running) do
+    with {:ok, message} <- runner().deploy(running),
          {:ok, _success} <- Deployments.mark_success(running, message) do
       :ok
     else
-      {:error, :invalid_status} = error ->
-        error
-
       {:error, reason} ->
-        deployment = Deployments.get_deployment!(deployment_id)
+        deployment = Deployments.get_deployment!(running.id)
         _ = Deployments.mark_failed(deployment, format_error(reason))
         {:error, reason}
     end

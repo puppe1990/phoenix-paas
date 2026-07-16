@@ -32,6 +32,8 @@ config :phoenix_paas, Oban,
   prefix: false,
   notifier: Oban.Notifiers.Isolated,
   peer: Oban.Peers.Isolated,
+  # Keep modest concurrency so different Lightsail hosts can deploy in parallel.
+  # Same-host deploys are serialized in DeployWorker via claim_running/snooze.
   queues: [deploys: 2],
   plugins: [Oban.Plugins.Pruner],
   shutdown_grace_period: :timer.minutes(15)

@@ -49,6 +49,48 @@ defmodule PhoenixPaas.DeploymentsTest do
       assert running.status == :running
     end
 
+    test "claim_running/1 rejects when another deploy is running on the same server", %{
+      scope: scope,
+      app: app,
+      deployment: deployment
+    } do
+      {:ok, first} = Deployments.mark_running(deployment)
+      assert first.status == :running
+
+      {:ok, second} = Deployments.create_deployment(app, %{git_sha: "def456"})
+      assert {:error, :server_busy} = Deployments.claim_running(second)
+
+      other_server = TenancyFixtures.server_fixture(scope)
+
+      {:ok, other_app, _} =
+        Apps.create_app(scope, %{
+          name: "Other App",
+          slug: "other-app",
+          github_repo: "puppe1990/other-app",
+          host: "other.gestaobem.com",
+          server_id: other_server.id
+        })
+
+      {:ok, other_deploy} = Deployments.create_deployment(other_app, %{git_sha: "zzz"})
+      assert {:ok, other_running} = Deployments.claim_running(other_deploy)
+      assert other_running.status == :running
+    end
+
+    test "claim_running/1 enforces FIFO for queued deploys on the same server", %{
+      app: app,
+      deployment: older
+    } do
+      {:ok, newer} = Deployments.create_deployment(app, %{git_sha: "newer"})
+
+      assert {:error, :server_busy} = Deployments.claim_running(newer)
+      assert {:ok, running_older} = Deployments.claim_running(older)
+      assert running_older.status == :running
+
+      {:ok, _} = Deployments.mark_success(running_older, "done")
+      assert {:ok, running_newer} = Deployments.claim_running(newer)
+      assert running_newer.status == :running
+    end
+
     test "mark_success/1 sets finished_at", %{deployment: deployment} do
       {:ok, running} = Deployments.mark_running(deployment)
       assert {:ok, success} = Deployments.mark_success(running, "deploy ok")
