@@ -16,22 +16,29 @@ defmodule PhoenixPaas.Deploy.Ssh do
     branch = deployment.git_ref || app.branch
     sha = short_sha(deployment.git_sha)
 
-    key_path = nil
-    work_dir = nil
-    tarball = nil
-
-    with :ok <- ensure_commands(["git", "ssh", "scp", "tar"]) do
+    with :ok <- ensure_commands(["git", "ssh", "scp", "tar"]),
+         {:ok, key_path} <- write_temp_key(server) do
+      # Nested try/after so cleanup always sees the bound path. Outer `with`
+      # bindings are not visible to a sibling `after` clause (classic Elixir
+      # pitfall that left /tmp/phoenix_paas_clone_* forever and broke later
+      # deploys when unique_integer collided after a BEAM restart).
       try do
-        with {:ok, key_path} <- write_temp_key(server),
-             {:ok, work_dir} <- clone_repo(app.github_repo, branch),
-             :ok <- validate_manifest_for_server(work_dir, app, server),
-             {:ok, tarball} <- create_tarball(work_dir),
-             {:ok, log} <-
-               upload_and_build(tarball, key_path, server, app, config, sha, work_dir) do
-          {:ok, log}
+        with {:ok, work_dir} <- clone_repo(app.github_repo, branch) do
+          try do
+            with :ok <- validate_manifest_for_server(work_dir, app, server),
+                 {:ok, tarball} <- create_tarball(work_dir) do
+              try do
+                upload_and_build(tarball, key_path, server, app, config, sha, work_dir)
+              after
+                File.rm(tarball)
+              end
+            end
+          after
+            File.rm_rf(work_dir)
+          end
         end
       after
-        cleanup(key_path, work_dir, tarball)
+        File.rm(key_path)
       end
     end
   end
@@ -56,7 +63,7 @@ defmodule PhoenixPaas.Deploy.Ssh do
     do: {:error, "SSH private key not configured on server"}
 
   defp write_temp_key(%{ssh_private_key_encrypted: key}) do
-    path = Path.join(System.tmp_dir!(), "phoenix_paas_ssh_#{:erlang.unique_integer([:positive])}")
+    path = temp_path("phoenix_paas_ssh")
 
     with :ok <- File.write(path, key),
          :ok <- File.chmod(path, 0o600) do
@@ -67,8 +74,10 @@ defmodule PhoenixPaas.Deploy.Ssh do
   end
 
   defp clone_repo(github_repo, branch) do
-    dir =
-      Path.join(System.tmp_dir!(), "phoenix_paas_clone_#{:erlang.unique_integer([:positive])}")
+    dir = temp_path("phoenix_paas_clone")
+    # Defensive: old BEAM restarts reused unique_integer counters and leftover
+    # dirs from the cleanup bug would make `git clone` fail immediately.
+    _ = File.rm_rf(dir)
 
     url = github_clone_url(github_repo)
 
@@ -79,11 +88,8 @@ defmodule PhoenixPaas.Deploy.Ssh do
   end
 
   defp create_tarball(work_dir) do
-    path =
-      Path.join(
-        System.tmp_dir!(),
-        "phoenix_paas_src_#{:erlang.unique_integer([:positive])}.tar.gz"
-      )
+    path = temp_path("phoenix_paas_src") <> ".tar.gz"
+    _ = File.rm(path)
 
     args = ["-czf", path] ++ tar_exclude_args() ++ ["-C", work_dir, "."]
 
@@ -91,6 +97,13 @@ defmodule PhoenixPaas.Deploy.Ssh do
       {:ok, _output} -> {:ok, path}
       {:error, output} -> {:error, "tar failed:\n#{output}"}
     end
+  end
+
+  defp temp_path(prefix) when is_binary(prefix) do
+    Path.join(
+      System.tmp_dir!(),
+      "#{prefix}_#{System.system_time(:nanosecond)}_#{:erlang.unique_integer([:positive])}"
+    )
   end
 
   defp upload_and_build(tarball, key_path, server, app, config, sha, work_dir) do
@@ -361,10 +374,4 @@ defmodule PhoenixPaas.Deploy.Ssh do
 
   defp trim(value) when is_binary(value), do: String.trim(value)
   defp trim(_), do: ""
-
-  defp cleanup(key_path, work_dir, tarball) do
-    if is_binary(key_path), do: File.rm(key_path)
-    if is_binary(work_dir), do: File.rm_rf(work_dir)
-    if is_binary(tarball), do: File.rm(tarball)
-  end
 end
