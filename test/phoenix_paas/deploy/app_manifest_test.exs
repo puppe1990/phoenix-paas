@@ -67,4 +67,38 @@ defmodule PhoenixPaas.Deploy.AppManifestTest do
 
     assert :ok = AppManifest.validate_for_server(manifest, server, [app], app)
   end
+
+  test "resolve reads Mix app atom as release_name when slug differs" do
+    scope = TenancyFixtures.scope_fixture()
+    server = TenancyFixtures.server_fixture(scope)
+
+    {:ok, app, _} =
+      PhoenixPaas.Apps.create_app(scope, %{
+        name: "Decor",
+        slug: "decor",
+        github_repo: "gestao-bem/gestao-bem-decor",
+        host: "decor.gestaobem.com",
+        port: 4005,
+        server_id: server.id
+      })
+
+    tmp = System.tmp_dir!()
+    repo_path = Path.join(tmp, "decor_manifest_#{:erlang.unique_integer([:positive])}")
+    File.mkdir_p!(repo_path)
+
+    File.write!(
+      Path.join(repo_path, "mix.exs"),
+      """
+      defmodule FestaPlatform.MixProject do
+        use Mix.Project
+        def project, do: [app: :festa_platform, version: "0.1.0"]
+      end
+      """
+    )
+
+    on_exit(fn -> File.rm_rf(repo_path) end)
+
+    manifest = AppManifest.resolve(repo_path, app)
+    assert manifest.release_name == "festa_platform"
+  end
 end

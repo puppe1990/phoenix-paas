@@ -63,12 +63,21 @@ defmodule PhoenixPaas.Apps.App do
   def release_name("controle-agente-viagens"), do: "controle_agente_viagens_phx"
   def release_name("campanha"), do: "campanha"
   def release_name("campanha-ops"), do: "campanha"
+  # Mix app atom is :festa_platform (not the PaaS slug "decor")
+  def release_name("decor"), do: "festa_platform"
+  def release_name("gestao-bem-decor"), do: "festa_platform"
+  def release_name("pay-core"), do: "pay_core"
+  def release_name("pay_core"), do: "pay_core"
   def release_name(slug) when is_binary(slug), do: String.replace(slug, "-", "_")
 
   def default_systemd_unit("trip-planner"), do: "trip_planner_ia"
+  def default_systemd_unit("decor"), do: "festa_platform"
+  def default_systemd_unit("pay-core"), do: "pay_core"
   def default_systemd_unit(slug) when is_binary(slug), do: "phx-#{slug}"
 
   def default_release_path("trip-planner"), do: "/opt/trip_planner_ia"
+  def default_release_path("decor"), do: "/opt/festa_platform"
+  def default_release_path("pay-core"), do: "/opt/pay_core"
   def default_release_path(slug) when is_binary(slug), do: "/opt/#{release_name(slug)}"
 
   def deploy_config(%__MODULE__{} = app) do

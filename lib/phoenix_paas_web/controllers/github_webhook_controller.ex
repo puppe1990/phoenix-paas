@@ -1,33 +1,58 @@
 defmodule PhoenixPaasWeb.GithubWebhookController do
   use PhoenixPaasWeb, :controller
 
+  require Logger
+
   alias PhoenixPaas.{Apps, Deployments, Github}
 
   def create(conn, _params) do
     raw_body = conn.private[:raw_body] || ""
     signature = get_req_header(conn, "x-hub-signature-256") |> List.first()
 
-    with {:ok, payload} <- decode_payload(raw_body),
-         repo when is_binary(repo) <- Github.repo_full_name(payload),
-         %{} = app <- find_app_by_repo_and_signature(repo, raw_body, signature),
-         {:ok, attrs} <- normalize_push_attrs(payload, app),
-         true <- app.auto_deploy,
-         {:ok, _job} <- Deployments.enqueue(app, attrs) do
-      send_resp(conn, :accepted, "queued")
-    else
+    result =
+      with {:ok, payload} <- decode_payload(raw_body),
+           repo when is_binary(repo) <- Github.repo_full_name(payload) || :missing_repo,
+           %{} = app <- find_app_by_repo_and_signature(repo, raw_body, signature),
+           {:ok, attrs} <- normalize_push_attrs(payload, app),
+           true <- app.auto_deploy || :auto_deploy_off,
+           {:ok, job} <- Deployments.enqueue(app, attrs) do
+        {:queued, app, job}
+      end
+
+    case result do
+      {:queued, app, job} ->
+        Logger.info(
+          "github webhook queued deploy app=#{app.slug} job=#{job.id} repo=#{app.github_repo}"
+        )
+
+        send_resp(conn, :accepted, "queued")
+
       :not_found ->
+        Logger.warning("github webhook unknown repo")
         send_resp(conn, :not_found, "unknown repo")
 
+      :missing_repo ->
+        Logger.warning("github webhook payload missing repository.full_name")
+        send_resp(conn, :bad_request, "missing repository")
+
       :ignore ->
+        # wrong branch / deleted ref — expected noise
         send_resp(conn, :ok, "ignored")
 
+      :auto_deploy_off ->
+        Logger.info("github webhook auto_deploy disabled")
+        send_resp(conn, :ok, "auto deploy disabled")
+
       false ->
+        # legacy path if auto_deploy check returns false without atom
         send_resp(conn, :ok, "auto deploy disabled")
 
       :error ->
+        Logger.warning("github webhook invalid signature")
         send_resp(conn, :unauthorized, "invalid signature")
 
-      {:error, _} ->
+      {:error, reason} ->
+        Logger.error("github webhook enqueue failed: #{inspect(reason)}")
         send_resp(conn, :bad_request, "invalid payload")
     end
   end
