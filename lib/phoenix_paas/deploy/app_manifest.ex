@@ -30,6 +30,7 @@ defmodule PhoenixPaas.Deploy.AppManifest do
   def resolve(repo_path, %App{} = app) when is_binary(repo_path) do
     defaults()
     |> Map.merge(app_overrides(app))
+    |> Map.merge(from_mix_exs(repo_path))
     |> Map.merge(from_repo(repo_path))
     |> then(&struct(__MODULE__, &1))
   end
@@ -87,8 +88,25 @@ defmodule PhoenixPaas.Deploy.AppManifest do
     %{
       caddy_listen_port: app.port,
       systemd_unit: app.systemd_unit,
-      release_path: app.release_path
+      release_path: app.release_path,
+      # Prefer explicit OTP app mapping; may be overridden by mix.exs / deploy.json
+      release_name: App.release_name(app.slug)
     }
+  end
+
+  # When slug != mix app atom (e.g. slug "decor", app :festa_platform), prefer mix.exs.
+  defp from_mix_exs(repo_path) do
+    mix_path = Path.join(repo_path, "mix.exs")
+
+    with true <- File.exists?(mix_path),
+         content <- File.read!(mix_path),
+         [_, atom] <- Regex.run(~r/\bapp:\s*:([a-zA-Z0-9_]+)/, content) do
+      %{release_name: atom}
+    else
+      _ -> %{}
+    end
+  rescue
+    _ -> %{}
   end
 
   defp from_repo(repo_path) do

@@ -289,13 +289,22 @@ defmodule PhoenixPaas.Deploy.Ssh do
     mix assets.setup
     mix assets.deploy
 
-    log "Building release #{config.release_name}"
+    log "Building release #{config.release_name} (slug=#{app.slug})"
     mix release --overwrite
+
+    REL_DIR="_build/prod/rel/#{config.release_name}"
+    if [[ ! -d "$REL_DIR" ]]; then
+      echo "Release directory missing: $REL_DIR" >&2
+      echo "Available releases:" >&2
+      ls -la _build/prod/rel 2>/dev/null || true
+      echo "Hint: set release_name in .phoenix_paas/deploy.json to the Mix app atom (see mix.exs app:)." >&2
+      exit 1
+    fi
 
     RELEASE_DIR="#{config.release_path}/releases/build"
     sudo mkdir -p "$RELEASE_DIR"
     sudo rm -rf "${RELEASE_DIR:?}"/*
-    sudo cp -a "_build/prod/rel/#{config.release_name}/." "$RELEASE_DIR/"
+    sudo cp -a "$REL_DIR/." "$RELEASE_DIR/"
     sudo ln -sfn "$RELEASE_DIR" #{config.release_path}/current
 
     #{ServerProvision.provision_script(app, config, manifest)}

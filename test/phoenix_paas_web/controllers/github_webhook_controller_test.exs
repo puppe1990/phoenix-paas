@@ -54,6 +54,18 @@ defmodule PhoenixPaasWeb.GithubWebhookControllerTest do
     assert response(conn, 404) == "unknown repo"
   end
 
+  test "returns 400 when repository is missing (no 500)" do
+    payload = ~s({"ref":"refs/heads/main","after":"abc123"})
+
+    conn =
+      build_conn()
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("x-hub-signature-256", sign(payload, "secret"))
+      |> post(~p"/webhooks/github", payload)
+
+    assert response(conn, 400) == "missing repository"
+  end
+
   defp sign(body, secret) do
     "sha256=" <> (:crypto.mac(:hmac, :sha256, secret, body) |> Base.encode16(case: :lower))
   end
