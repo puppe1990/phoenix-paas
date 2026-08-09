@@ -8,6 +8,9 @@ DEPLOY_IP="${DEPLOY_IP:-}"
 DEPLOY_HOST="${DEPLOY_HOST:-paas.gestaobem.com}"
 DEPLOY_SSH_KEY="${DEPLOY_SSH_KEY:-$HOME/.ssh/lightsail-default-key-us-east-1.pem}"
 DEPLOY_USER="${DEPLOY_USER:-ubuntu}"
+# Preserve CLI overrides — deploy.local.env must not silently win over env vars.
+_cli_deploy_ip="${DEPLOY_IP-}"
+_cli_deploy_host="${DEPLOY_HOST-}"
 _cli_run_seed="${RUN_SEED-}"
 RUN_SEED="${RUN_SEED:-false}"
 SEED_USER_PASSWORD="${SEED_USER_PASSWORD:-}"
@@ -18,6 +21,12 @@ if [[ -f "$ROOT/scripts/deploy/deploy.local.env" ]]; then
   source "$ROOT/scripts/deploy/deploy.local.env"
 fi
 
+if [[ -n "${_cli_deploy_ip}" ]]; then
+  DEPLOY_IP="${_cli_deploy_ip}"
+fi
+if [[ -n "${_cli_deploy_host}" ]]; then
+  DEPLOY_HOST="${_cli_deploy_host}"
+fi
 if [[ -n "${_cli_run_seed}" ]]; then
   RUN_SEED="${_cli_run_seed}"
 fi

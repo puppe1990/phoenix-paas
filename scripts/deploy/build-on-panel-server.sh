@@ -7,10 +7,19 @@ cd "$ROOT"
 DEPLOY_IP="${DEPLOY_IP:-}"
 DEPLOY_SSH_KEY="${DEPLOY_SSH_KEY:-$HOME/.ssh/lightsail-default-key-us-east-1.pem}"
 DEPLOY_USER="${DEPLOY_USER:-ubuntu}"
+_cli_deploy_ip="${DEPLOY_IP-}"
+_cli_deploy_ssh_key="${DEPLOY_SSH_KEY-}"
 
 if [[ -f "$ROOT/scripts/deploy/deploy.local.env" ]]; then
   # shellcheck source=/dev/null
   source "$ROOT/scripts/deploy/deploy.local.env"
+fi
+
+if [[ -n "${_cli_deploy_ip}" ]]; then
+  DEPLOY_IP="${_cli_deploy_ip}"
+fi
+if [[ -n "${_cli_deploy_ssh_key}" ]]; then
+  DEPLOY_SSH_KEY="${_cli_deploy_ssh_key}"
 fi
 
 log() {
