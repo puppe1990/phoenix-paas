@@ -1,8 +1,7 @@
-# Register Campanha Ops on the panel and sync GitHub webhook:
-#   DEPLOY_RUNNER=ssh mix run --no-start priv/scripts/setup_campanha.exs
+# Register CLARITY AI (puppe1990/assistente-ia) on catalogo-lightsail.
 #
-# On production panel:
-#   bin/phoenix_paas rpc "Code.eval_file('priv/scripts/setup_campanha.exs')"
+#   GITHUB_TOKEN=... XAI_API_KEY=... \
+#     mix run --no-start priv/scripts/setup_clarity.exs
 
 for app <- [:crypto, :ecto_sql, :ecto_sqlite3, :cloak, :cloak_ecto, :finch, :req] do
   {:ok, _} = Application.ensure_all_started(app)
@@ -32,7 +31,10 @@ user = Accounts.get_user_by_email(email) || raise "user not found: #{email}"
 scope = Accounts.ensure_scope_for_user(user)
 tenant_id = scope.tenant.id
 
-host_ip = System.get_env("CAMPANHA_SERVER_IP") || "52.73.89.19"
+host_ip = System.get_env("CLARITY_SERVER_IP") || "52.73.89.19"
+server_name = System.get_env("CLARITY_SERVER_NAME") || "catalogo-lightsail"
+host = System.get_env("CLARITY_HOST") || "clarity.gestaobem.com"
+port = String.to_integer(System.get_env("CLARITY_PORT") || "4013")
 
 ssh_key =
   case System.get_env("SEED_SSH_KEY_PATH") do
@@ -40,24 +42,25 @@ ssh_key =
       if File.exists?(path), do: File.read!(path), else: nil
 
     _ ->
-      nil
+      default = Path.expand("~/.ssh/lightsail-default-key-us-east-1.pem")
+      if File.exists?(default), do: File.read!(default), else: nil
   end
 
 ssh_key =
   ssh_key ||
-    case Repo.one(from s in Servers.Server, where: s.name == "trip-lightsail", limit: 1) do
+    case Repo.one(from s in Servers.Server, where: s.name == ^server_name, limit: 1) do
       %Servers.Server{ssh_private_key_encrypted: key} when is_binary(key) and key != "" -> key
       _ -> nil
     end
 
 server_attrs =
   %{
-    name: "campanha-lightsail",
+    name: server_name,
     host_ip: host_ip,
     ssh_user: "ubuntu",
     region: "us-east-1",
-    deploy_mode: "dedicated",
-    aws_instance_name: "campanha-lightsail"
+    deploy_mode: "shared",
+    aws_instance_name: server_name
   }
   |> then(fn attrs ->
     if is_binary(ssh_key), do: Map.put(attrs, :ssh_private_key, ssh_key), else: attrs
@@ -66,7 +69,7 @@ server_attrs =
 server =
   case Repo.one(
          from s in Servers.Server,
-           where: s.tenant_id == ^tenant_id and s.name == "campanha-lightsail",
+           where: s.tenant_id == ^tenant_id and s.name == ^server_name,
            limit: 1
        ) do
     %Servers.Server{} = existing ->
@@ -79,21 +82,25 @@ server =
       server
   end
 
+secret =
+  System.get_env("CLARITY_SECRET_KEY_BASE") ||
+    Base.encode64(:crypto.strong_rand_bytes(48))
+
 app_attrs = %{
-  name: "Campanha",
-  slug: "campanha",
-  github_repo: "puppe1990/campanha-ops",
+  name: "CLARITY AI",
+  slug: "assistente",
+  github_repo: "puppe1990/assistente-ia",
   branch: "main",
-  host: "campanha.gestaobem.com",
-  port: 4000,
-  systemd_unit: "campanha",
-  release_path: "/opt/campanha",
+  host: host,
+  port: port,
+  systemd_unit: "assistente",
+  release_path: "/opt/assistente",
   auto_deploy: true,
   server_id: server.id
 }
 
 app =
-  case Apps.get_app_by_repo("puppe1990/campanha-ops") do
+  case Apps.get_app_by_repo("puppe1990/assistente-ia") do
     nil ->
       {:ok, app, _status} = Apps.create_app(scope, app_attrs)
       Apps.get_app!(scope, app.id)
@@ -106,12 +113,12 @@ app =
 
 env = %{
   "PHX_SERVER" => "true",
-  "PORT" => "4000",
-  "PHX_HOST" => "campanha.gestaobem.com",
+  "PORT" => Integer.to_string(port),
+  "PHX_HOST" => host,
   "POOL_SIZE" => "5",
-  "SECRET_KEY_BASE" => System.get_env("CAMPANHA_SECRET_KEY_BASE"),
-  "TURSO_DATABASE_URL" => System.get_env("CAMPANHA_TURSO_DATABASE_URL"),
-  "TURSO_AUTH_TOKEN" => System.get_env("CAMPANHA_TURSO_AUTH_TOKEN")
+  "SECRET_KEY_BASE" => secret,
+  "DATABASE_PATH" => "/var/lib/assistente/replica.db",
+  "XAI_API_KEY" => System.get_env("XAI_API_KEY")
 }
 
 for {key, value} <- env, is_binary(value) and value != "" do
@@ -125,9 +132,14 @@ IO.inspect(
     app_id: app.id,
     slug: app.slug,
     host: app.host,
+    port: app.port,
+    release_name: PhoenixPaas.Apps.App.release_name(app.slug),
+    server: server.name,
     server_ip: server.host_ip,
+    release_path: app.release_path,
+    systemd_unit: app.systemd_unit,
     webhook: webhook_status,
-    auto_deploy: app.auto_deploy
+    xai_key: if(System.get_env("XAI_API_KEY") in [nil, ""], do: :missing, else: :set)
   },
-  label: "campanha_setup"
+  label: "clarity_setup"
 )

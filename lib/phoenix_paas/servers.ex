@@ -1,11 +1,11 @@
 defmodule PhoenixPaas.Servers do
   @moduledoc """
-  Manages deploy target servers (Lightsail VMs).
+  Manages deploy target servers (Lightsail and Hetzner VMs).
   """
 
   import Ecto.Query, warn: false
   alias PhoenixPaas.Accounts.Scope
-  alias PhoenixPaas.AWS.Lightsail
+  alias PhoenixPaas.Cloud
   alias PhoenixPaas.Repo
   alias PhoenixPaas.Servers.Server
 
@@ -32,6 +32,12 @@ defmodule PhoenixPaas.Servers do
     |> Repo.insert()
   end
 
+  def update_host_ip(%Server{} = server, host_ip) when is_binary(host_ip) do
+    server
+    |> Server.changeset(%{host_ip: host_ip})
+    |> Repo.update()
+  end
+
   def change_server(server, attrs \\ %{}) do
     Server.changeset(server, attrs)
   end
@@ -48,11 +54,7 @@ defmodule PhoenixPaas.Servers do
   def sync_specs(%Scope{}, %Server{}), do: {:error, :unauthorized}
 
   def sync_specs(%Server{} = server) do
-    with {:ok, instance_name} <- instance_name(server),
-         {:ok, spec} <- Lightsail.get_instance(server.region, instance_name),
-         {:ok, updated} <- apply_spec(server, spec) do
-      {:ok, updated}
-    end
+    Cloud.sync_specs(server)
   end
 
   def list_resize_options(%Scope{tenant: tenant}, %Server{tenant_id: tenant_id} = server)
@@ -63,13 +65,7 @@ defmodule PhoenixPaas.Servers do
   def list_resize_options(%Scope{}, %Server{}), do: []
 
   def list_resize_options(%Server{} = server) do
-    case Lightsail.list_bundles(server.region) do
-      {:ok, bundles} ->
-        Enum.reject(bundles, &(&1.bundle_id == server.bundle_id))
-
-      {:error, _} ->
-        []
-    end
+    Cloud.list_resize_options(server)
   end
 
   def resize_bundle(%Scope{tenant: tenant}, %Server{tenant_id: tenant_id} = server, bundle_id)
@@ -80,33 +76,7 @@ defmodule PhoenixPaas.Servers do
   def resize_bundle(%Scope{}, %Server{}, _bundle_id), do: {:error, :unauthorized}
 
   def resize_bundle(%Server{} = server, bundle_id) do
-    with {:ok, instance_name} <- instance_name(server),
-         :ok <- Lightsail.change_bundle(server.region, instance_name, bundle_id),
-         {:ok, updated} <- sync_specs(server) do
-      {:ok, updated}
-    end
-  end
-
-  defp instance_name(%Server{aws_instance_name: name})
-       when is_binary(name) and name != "",
-       do: {:ok, name}
-
-  defp instance_name(_), do: {:error, :missing_instance_name}
-
-  defp apply_spec(server, spec) do
-    server
-    |> Server.changeset(%{
-      bundle_id: spec.bundle_id,
-      bundle_name: spec.bundle_name,
-      cpu_count: spec.cpu_count,
-      ram_mb: spec.ram_mb,
-      disk_gb: spec.disk_gb,
-      instance_status: spec.status,
-      blueprint_name: spec.blueprint_name,
-      monthly_price_usd: spec.monthly_price_usd,
-      specs_synced_at: DateTime.utc_now(:second)
-    })
-    |> Repo.update()
+    Cloud.resize_bundle(server, bundle_id)
   end
 
   defp stringify_keys(map) when is_map(map) do

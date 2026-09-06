@@ -119,6 +119,7 @@ env = %{
   "POOL_SIZE" => "5",
   "SECRET_KEY_BASE" => secret,
   "DATABASE_PATH" => "/var/lib/festa_platform/festa_platform_prod.db",
+  "PAY_CORE_MODE" => "production",
   "TURSO_DATABASE_URL" => System.get_env("DECOR_TURSO_DATABASE_URL"),
   "TURSO_AUTH_TOKEN" => System.get_env("DECOR_TURSO_AUTH_TOKEN")
 }

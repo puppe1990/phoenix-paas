@@ -17,7 +17,7 @@ defmodule PhoenixPaasWeb.AppLiveTest do
     {:ok, view, html} = live(conn, ~p"/apps/new")
 
     assert has_element?(view, "#app-form")
-    assert html =~ "Register Phoenix Application"
+    assert html =~ "Register application"
     assert html =~ "Pick a GitHub repository"
     refute html =~ "Systemd unit"
   end

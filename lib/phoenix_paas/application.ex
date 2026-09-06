@@ -5,6 +5,8 @@ defmodule PhoenixPaas.Application do
 
   use Application
 
+  require Logger
+
   @impl true
   def start(_type, _args) do
     children = [
@@ -25,7 +27,15 @@ defmodule PhoenixPaas.Application do
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: PhoenixPaas.Supervisor]
-    Supervisor.start_link(children, opts)
+
+    case Supervisor.start_link(children, opts) do
+      {:ok, pid} ->
+        maybe_enqueue_auto_deploy_health()
+        {:ok, pid}
+
+      other ->
+        other
+    end
   end
 
   # Tell Phoenix to update the endpoint configuration
@@ -34,6 +44,30 @@ defmodule PhoenixPaas.Application do
   def config_change(changed, _new, removed) do
     PhoenixPaasWeb.Endpoint.config_change(changed, removed)
     :ok
+  end
+
+  defp maybe_enqueue_auto_deploy_health do
+    if Application.get_env(:phoenix_paas, :auto_deploy_health_on_boot, true) do
+      Task.start(fn ->
+        try do
+          result =
+            %{source: "boot"}
+            |> PhoenixPaas.Workers.AutoDeployHealthWorker.new()
+            |> Oban.insert()
+
+          case result do
+            {:ok, _job} ->
+              :ok
+
+            {:error, reason} ->
+              Logger.warning("auto_deploy_health boot enqueue failed: #{inspect(reason)}")
+          end
+        rescue
+          error ->
+            Logger.warning("auto_deploy_health boot enqueue crashed: #{Exception.message(error)}")
+        end
+      end)
+    end
   end
 
   defp skip_migrations?() do

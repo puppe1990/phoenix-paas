@@ -38,6 +38,9 @@ config :phoenix_live_view,
 config :phoenix,
   sort_verified_routes_query_params: true
 
+config :phoenix_paas, :auto_deploy_health_on_boot, false
+config :phoenix_paas, :dns_resolver, PhoenixPaas.Deploy.DnsStub
+
 config :phoenix_paas, Oban,
   engine: Oban.Engines.Lite,
   testing: :manual,
@@ -45,6 +48,7 @@ config :phoenix_paas, Oban,
 
 config :phoenix_paas, :deploy_runner, PhoenixPaas.Deploy.RunnerMock
 config :phoenix_paas, :lightsail_client, PhoenixPaas.AWS.LightsailMock
+config :phoenix_paas, :hetzner_client, PhoenixPaas.HetznerMock
 
 config :phoenix_paas, PhoenixPaas.Vault,
   ciphers: [

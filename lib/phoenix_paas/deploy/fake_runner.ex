@@ -9,7 +9,7 @@ defmodule PhoenixPaas.Deploy.FakeRunner do
 
     {:ok,
      """
-     ==> Connecting to Lightsail VM
+     ==> Connecting to deploy VM
      $ git fetch origin #{deployment.git_ref || deployment.app.branch}
      $ MIX_ENV=prod mix deps.get --only prod
      $ MIX_ENV=prod mix assets.deploy

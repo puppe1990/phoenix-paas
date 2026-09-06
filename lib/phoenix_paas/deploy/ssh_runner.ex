@@ -1,6 +1,6 @@
 defmodule PhoenixPaas.Deploy.SshRunner do
   @moduledoc """
-  SSH-based deploy runner for Lightsail targets.
+  SSH-based deploy runner for Hetzner and Lightsail targets.
 
   Clones the GitHub repo, uploads source, builds the OTP release on the VM,
   runs migrations, and restarts systemd — mirroring `scripts/deploy/update.sh`.

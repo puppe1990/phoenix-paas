@@ -40,6 +40,16 @@ if config_env() != :test do
     end
 
   config :phoenix_paas, :lightsail_client, lightsail_client
+
+  hetzner_client =
+    if System.get_env("HCLOUD_TOKEN") in [nil, ""] and
+         System.get_env("HETZNER_API_TOKEN") in [nil, ""] do
+      PhoenixPaas.Hetzner.Stub
+    else
+      PhoenixPaas.Hetzner.Client
+    end
+
+  config :phoenix_paas, :hetzner_client, hetzner_client
 end
 
 if config_env() == :prod do
