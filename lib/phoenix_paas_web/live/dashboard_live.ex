@@ -38,15 +38,14 @@ defmodule PhoenixPaasWeb.DashboardLive do
           />
           <div class="relative z-10 max-w-2xl space-y-2">
             <span class="inline-block rounded border border-hd-border bg-hd-aside px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-hd-orange">
-              AWS LIGHTSAIL AUTOMATIC DISPATCH
+              HETZNER + LIGHTSAIL AUTOMATIC DISPATCH
             </span>
             <h2 class="font-display text-2xl font-semibold tracking-tight text-hd-text">
               Phoenix PaaS
             </h2>
             <p class="font-sans text-xs leading-relaxed text-hd-muted">
-              Deploy production-ready Phoenix and Elixir applications directly to your AWS Lightsail virtual machines
-              with bare-metal OTP performance. Leverage git webhooks triggers to rebuild releases instantly on commit
-              push events, completely isolated without the overhead of Kubernetes.
+              Deploy Phoenix and Go (Cais) applications to Hetzner Cloud or AWS Lightsail with git webhooks,
+              OTP/Cais releases, and no Kubernetes overhead.
             </p>
             <div class="flex flex-wrap items-center gap-2 pt-1">
               <span class="flex items-center gap-1 rounded border border-hd-border bg-hd-bg px-2 py-0.5 text-[11px] text-hd-muted">
@@ -68,7 +67,7 @@ defmodule PhoenixPaasWeb.DashboardLive do
         <div class="grid gap-4 md:grid-cols-2">
           <.link navigate={~p"/servers"} class="block">
             <.metric_card
-              title="Registered Lightsail VMs"
+              title="Registered servers"
               value={Integer.to_string(@server_count)}
               hint="Active Hypervisors"
               icon="hero-server-stack"
@@ -77,7 +76,7 @@ defmodule PhoenixPaasWeb.DashboardLive do
 
           <.link navigate={~p"/apps"} class="block">
             <.metric_card
-              title="Configured Elixir Apps"
+              title="Configured apps"
               value={Integer.to_string(@app_count)}
               hint="Live Routes"
               icon="hero-globe-alt"

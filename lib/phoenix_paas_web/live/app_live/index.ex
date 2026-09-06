@@ -120,10 +120,10 @@ defmodule PhoenixPaasWeb.AppLive.Index do
           <div class="space-y-4 p-4">
             <div class="space-y-1">
               <h3 class="font-display text-sm font-semibold text-hd-text">
-                Register Phoenix Application
+                Register application
               </h3>
               <p class="text-xs text-hd-muted">
-                Pick a GitHub repository — name, host, deploy paths, and webhook are filled in automatically.
+                Pick a GitHub repository — Phoenix and Go (Cais) apps are detected automatically.
               </p>
             </div>
 
@@ -161,6 +161,7 @@ defmodule PhoenixPaasWeb.AppLive.Index do
                     label="Server"
                     value={server_label(@servers, @form[:server_id].value)}
                   />
+                  <.preview_item label="Runtime" value={@form[:runtime].value || "phoenix"} mono />
                   <.preview_item label="Systemd unit" value={@form[:systemd_unit].value} mono />
                   <.preview_item label="Release path" value={@form[:release_path].value} mono />
                 </dl>
@@ -215,6 +216,15 @@ defmodule PhoenixPaasWeb.AppLive.Index do
                     type="select"
                     label="Server"
                     options={server_options(@servers)}
+                  />
+                  <.input
+                    field={@form[:runtime]}
+                    type="select"
+                    label="Runtime"
+                    options={[
+                      {"Phoenix / Elixir", "phoenix"},
+                      {"Go / Cais", "golang"}
+                    ]}
                   />
                   <.input
                     field={@form[:systemd_unit]}
@@ -333,6 +343,7 @@ defmodule PhoenixPaasWeb.AppLive.Index do
       name="app[server_id]"
       value={@form[:server_id].value}
     />
+    <input type="hidden" name="app[runtime]" value={@form[:runtime].value || "phoenix"} />
     <input type="hidden" name="app[systemd_unit]" value={@form[:systemd_unit].value} />
     <input type="hidden" name="app[release_path]" value={@form[:release_path].value} />
     <input

@@ -40,6 +40,10 @@ defmodule PhoenixPaas.Apps do
     Repo.all(from a in App, where: a.github_repo == ^github_repo)
   end
 
+  def list_all_with_servers do
+    Repo.all(from a in App, order_by: [asc: a.slug], preload: [:server])
+  end
+
   def create_app(%Scope{tenant: tenant}, attrs) do
     attrs = Map.put(stringify_keys(attrs), "tenant_id", tenant.id)
 

@@ -25,6 +25,22 @@ defmodule PhoenixPaas.AppsTest do
       assert Ecto.Changeset.get_field(changeset, :systemd_unit) == "phx-my-app"
       assert Ecto.Changeset.get_field(changeset, :release_path) == "/opt/my_app"
     end
+
+    test "vexo uses vexo systemd unit and /opt/vexo" do
+      changeset = Apps.change_app(%PhoenixPaas.Apps.App{}, %{slug: "vexo"})
+
+      assert Ecto.Changeset.get_field(changeset, :systemd_unit) == "vexo"
+      assert Ecto.Changeset.get_field(changeset, :release_path) == "/opt/vexo"
+    end
+
+    test "golang runtime uses slug as unit and /opt/slug" do
+      changeset =
+        Apps.change_app(%PhoenixPaas.Apps.App{}, %{slug: "atelie", runtime: "golang"})
+
+      assert Ecto.Changeset.get_field(changeset, :runtime) == "golang"
+      assert Ecto.Changeset.get_field(changeset, :systemd_unit) == "atelie"
+      assert Ecto.Changeset.get_field(changeset, :release_path) == "/opt/atelie"
+    end
   end
 
   describe "create_app/2" do

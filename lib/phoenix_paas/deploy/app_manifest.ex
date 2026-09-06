@@ -13,6 +13,9 @@ defmodule PhoenixPaas.Deploy.AppManifest do
             systemd_unit: nil,
             release_path: nil,
             release_name: nil,
+            build_dir: nil,
+            runtime: "phoenix",
+            binaries: ["server"],
             domain_checklist?: false
 
   @type t :: %__MODULE__{
@@ -23,6 +26,9 @@ defmodule PhoenixPaas.Deploy.AppManifest do
           memory_max_mb: integer(),
           systemd_unit: String.t() | nil,
           release_path: String.t() | nil,
+          build_dir: String.t() | nil,
+          runtime: String.t(),
+          binaries: [String.t()],
           domain_checklist?: boolean()
         }
 
@@ -31,6 +37,7 @@ defmodule PhoenixPaas.Deploy.AppManifest do
     defaults()
     |> Map.merge(app_overrides(app))
     |> Map.merge(from_mix_exs(repo_path))
+    |> Map.merge(from_go_mod(repo_path))
     |> Map.merge(from_repo(repo_path))
     |> then(&struct(__MODULE__, &1))
   end
@@ -80,6 +87,9 @@ defmodule PhoenixPaas.Deploy.AppManifest do
       memory_max_mb: 400,
       systemd_unit: nil,
       release_path: nil,
+      build_dir: nil,
+      runtime: "phoenix",
+      binaries: ["server"],
       domain_checklist?: false
     }
   end
@@ -89,10 +99,27 @@ defmodule PhoenixPaas.Deploy.AppManifest do
       caddy_listen_port: app.port,
       systemd_unit: app.systemd_unit,
       release_path: app.release_path,
+      runtime: app.runtime || "phoenix",
       # Prefer explicit OTP app mapping; may be overridden by mix.exs / deploy.json
       release_name: App.release_name(app.slug)
     }
   end
+
+  defp from_go_mod(repo_path) do
+    if File.exists?(Path.join(repo_path, "go.mod")) and
+         not File.exists?(Path.join(repo_path, "mix.exs")) do
+      binaries =
+        ["server", "worker"]
+        |> Enum.filter(&File.exists?(Path.join(repo_path, "cmd/#{&1}/main.go")))
+
+      %{runtime: "golang", binaries: binaries_or_default(binaries)}
+    else
+      %{}
+    end
+  end
+
+  defp binaries_or_default([]), do: ["server"]
+  defp binaries_or_default(binaries), do: binaries
 
   # When slug != mix app atom (e.g. slug "decor", app :festa_platform), prefer mix.exs.
   defp from_mix_exs(repo_path) do
@@ -134,9 +161,26 @@ defmodule PhoenixPaas.Deploy.AppManifest do
       systemd_unit: blank_to_nil(Map.get(map, "systemd_unit")),
       release_path: blank_to_nil(Map.get(map, "release_path")),
       release_name: blank_to_nil(Map.get(map, "release_name")),
+      build_dir: blank_to_nil(Map.get(map, "build_dir")),
+      runtime: parse_runtime(Map.get(map, "runtime")),
+      binaries: parse_binaries(Map.get(map, "binaries")),
       domain_checklist?: Map.get(map, "caddy_mode") == "replace"
     }
+    |> Enum.reject(fn {_k, v} -> v in [nil, []] end)
+    |> Map.new()
   end
+
+  defp parse_runtime("golang"), do: "golang"
+  defp parse_runtime("phoenix"), do: "phoenix"
+  defp parse_runtime(_), do: nil
+
+  defp parse_binaries(list) when is_list(list) do
+    list
+    |> Enum.filter(&is_binary/1)
+    |> Enum.reject(&(&1 == ""))
+  end
+
+  defp parse_binaries(_), do: nil
 
   defp truthy?(true), do: true
   defp truthy?("true"), do: true

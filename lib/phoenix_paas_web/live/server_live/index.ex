@@ -36,13 +36,15 @@ defmodule PhoenixPaasWeb.ServerLive.Index do
   def handle_event("validate", %{"server" => server_params}, socket) do
     changeset =
       %Server{}
-      |> Servers.change_server(server_params)
+      |> Servers.change_server(apply_provider_defaults(server_params))
       |> Map.put(:action, :validate)
 
     {:noreply, assign(socket, form: to_form(changeset))}
   end
 
   def handle_event("save", %{"server" => server_params}, socket) do
+    server_params = apply_provider_defaults(server_params)
+
     case Servers.create_server(socket.assigns.current_scope, server_params) do
       {:ok, server} ->
         {:noreply,
@@ -70,9 +72,9 @@ defmodule PhoenixPaasWeb.ServerLive.Index do
       <div class="space-y-4">
         <div class="flex items-center justify-between gap-4">
           <div>
-            <h2 class="font-display text-sm font-semibold text-hd-text">AWS Lightsail VM Units</h2>
+            <h2 class="font-display text-sm font-semibold text-hd-text">Deploy servers</h2>
             <p class="text-[11px] text-hd-muted">
-              Virtual Private Server cluster systems hosting Phoenix release application units
+              Hetzner Cloud and AWS Lightsail VMs hosting Phoenix and Go applications
             </p>
           </div>
           <.link :if={@live_action == :index} navigate={~p"/servers/new"} class="paas-btn-primary">
@@ -82,7 +84,7 @@ defmodule PhoenixPaasWeb.ServerLive.Index do
 
         <div :if={@live_action == :new} class="paas-card">
           <div class="space-y-4 p-4">
-            <h3 class="font-display text-sm font-semibold text-hd-text">Register Lightsail VM</h3>
+            <h3 class="font-display text-sm font-semibold text-hd-text">Register server</h3>
             <.form
               for={@form}
               id="server-form"
@@ -93,9 +95,22 @@ defmodule PhoenixPaasWeb.ServerLive.Index do
               <div class="grid gap-4 sm:grid-cols-2">
                 <.input field={@form[:name]} type="text" label="Name" required />
                 <.input field={@form[:host_ip]} type="text" label="Host IP" required />
+                <.input
+                  field={@form[:provider]}
+                  type="select"
+                  label="Provider"
+                  options={[
+                    {"Hetzner Cloud", "hetzner"},
+                    {"AWS Lightsail", "lightsail"}
+                  ]}
+                />
                 <.input field={@form[:ssh_user]} type="text" label="SSH user" />
-                <.input field={@form[:region]} type="text" label="Region" />
-                <.input field={@form[:aws_instance_name]} type="text" label="AWS instance name" />
+                <.input field={@form[:region]} type="text" label="Region / location" />
+                <.input
+                  field={@form[:aws_instance_name]}
+                  type="text"
+                  label="Instance name"
+                />
                 <.input
                   field={@form[:deploy_mode]}
                   type="select"
@@ -134,8 +149,7 @@ defmodule PhoenixPaasWeb.ServerLive.Index do
                 No registered VM instances
               </h3>
               <p class="mx-auto mt-1 max-w-md text-xs leading-relaxed text-hd-muted">
-                To begin deploying, please link your first Amazon Lightsail virtual private server instance.
-                Map static IP boundaries to enable automatic SSH and webhook dispatch features.
+                Register a Hetzner Cloud or AWS Lightsail VM with its SSH key to start deploying.
               </p>
               <.link navigate={~p"/servers/new"} class="paas-btn-primary mt-4 inline-flex">
                 Register New Server
@@ -154,6 +168,9 @@ defmodule PhoenixPaasWeb.ServerLive.Index do
                     <h3 class="font-display text-xs font-semibold text-hd-text">{server.name}</h3>
                     <div class="flex flex-wrap gap-1">
                       <span class="inline-block rounded border border-hd-border bg-hd-bg px-2 py-0.5 font-mono text-[9px] font-medium text-hd-orange">
+                        {server.provider || "lightsail"}
+                      </span>
+                      <span class="inline-block rounded border border-hd-border bg-hd-bg px-2 py-0.5 font-mono text-[9px] font-medium text-hd-muted">
                         {server.region}
                       </span>
                       <span class={[
@@ -202,7 +219,7 @@ defmodule PhoenixPaasWeb.ServerLive.Index do
                   :if={not PhoenixPaas.Servers.Server.specs_configured?(server)}
                   class="rounded border border-dashed border-hd-border px-2.5 py-2 text-center text-[10px] text-hd-muted"
                 >
-                  Open to sync Lightsail specs
+                  Open to sync cloud specs
                 </div>
 
                 <div class="flex items-center justify-between rounded border border-hd-border bg-hd-bg px-2.5 py-1.5 font-mono text-[11px]">
@@ -231,8 +248,8 @@ defmodule PhoenixPaasWeb.ServerLive.Index do
             <div class="flex size-8 items-center justify-center rounded-full border border-hd-border text-hd-muted">
               <.icon name="hero-plus" class="size-4" />
             </div>
-            <p class="mt-1.5 text-[11px] font-semibold text-hd-text">Add AWS Lightsail VM</p>
-            <p class="text-[10px] text-hd-muted">Link next VPS node</p>
+            <p class="mt-1.5 text-[11px] font-semibold text-hd-text">Add server</p>
+            <p class="text-[10px] text-hd-muted">Hetzner or Lightsail</p>
           </.link>
         </div>
 
@@ -250,5 +267,23 @@ defmodule PhoenixPaasWeb.ServerLive.Index do
       </div>
     </Layouts.app>
     """
+  end
+
+  defp apply_provider_defaults(%{"provider" => "hetzner"} = params) do
+    params
+    |> put_if_blank_or("region", "fsn1", ["", "us-east-1"])
+    |> put_if_blank_or("ssh_user", "ubuntu", ["", nil])
+  end
+
+  defp apply_provider_defaults(params), do: params
+
+  defp put_if_blank_or(params, key, value, replace) do
+    current = Map.get(params, key)
+
+    if current in replace do
+      Map.put(params, key, value)
+    else
+      params
+    end
   end
 end

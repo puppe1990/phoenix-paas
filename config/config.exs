@@ -25,6 +25,9 @@ config :phoenix_paas,
   generators: [timestamp_type: :utc_datetime]
 
 config :phoenix_paas, :lightsail_client, PhoenixPaas.AWS.Lightsail.Stub
+config :phoenix_paas, :hetzner_client, PhoenixPaas.Hetzner.Stub
+
+config :phoenix_paas, :auto_deploy_health_on_boot, true
 
 config :phoenix_paas, Oban,
   repo: PhoenixPaas.Repo,
@@ -34,8 +37,14 @@ config :phoenix_paas, Oban,
   peer: Oban.Peers.Isolated,
   # Keep modest concurrency so different Lightsail hosts can deploy in parallel.
   # Same-host deploys are serialized in DeployWorker via claim_running/snooze.
-  queues: [deploys: 2],
-  plugins: [Oban.Plugins.Pruner],
+  queues: [deploys: 2, maintenance: 1],
+  plugins: [
+    Oban.Plugins.Pruner,
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"*/15 * * * *", PhoenixPaas.Workers.AutoDeployHealthWorker}
+     ]}
+  ],
   shutdown_grace_period: :timer.minutes(15)
 
 # Configure the endpoint

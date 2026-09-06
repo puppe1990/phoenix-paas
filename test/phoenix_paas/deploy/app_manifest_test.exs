@@ -1,5 +1,5 @@
 defmodule PhoenixPaas.Deploy.AppManifestTest do
-  use PhoenixPaas.DataCase, async: true
+  use PhoenixPaas.DataCase, async: false
 
   alias PhoenixPaas.Deploy.AppManifest
   alias PhoenixPaas.TenancyFixtures
@@ -45,6 +45,18 @@ defmodule PhoenixPaas.Deploy.AppManifestTest do
     assert manifest.caddyfile == "deploy/Caddyfile"
     assert manifest.memory_max_mb == 1024
     assert manifest.domain_checklist?
+  end
+
+  test "resolve reads build_dir from deploy.json", %{app: app, repo_path: repo_path} do
+    File.write!(
+      Path.join(repo_path, ".phoenix_paas/deploy.json"),
+      ~s({"build_dir": "assistente", "release_name": "assistente"})
+    )
+
+    manifest = AppManifest.resolve(repo_path, app)
+
+    assert manifest.build_dir == "assistente"
+    assert manifest.release_name == "assistente"
   end
 
   test "validate_for_server rejects solo app on shared server", %{

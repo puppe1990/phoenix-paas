@@ -1,19 +1,19 @@
 # Phoenix PaaS
 
-Control panel for deploying Phoenix/Elixir apps to **AWS Lightsail** via GitHub webhooks.
+Control panel for deploying **Phoenix/Elixir** and **Go (Cais)** apps to **Hetzner Cloud** (CX33) or AWS Lightsail via GitHub webhooks.
 
-Register Lightsail VMs, link GitHub repos, trigger manual deploys or push-to-deploy, and watch OTP release builds in a live terminal.
+Register VMs, link GitHub repos, trigger manual deploys or push-to-deploy, and watch builds in a live terminal.
 
 ![Phoenix PaaS dashboard — Trip Planner deployed on Lightsail](docs/images/dashboard.jpg)
 
 ## Features
 
-- **Servers** — register Lightsail VMs (IP, region, SSH user)
-- **Apps** — link a GitHub repo, host, branch, and target server
+- **Servers** — register Hetzner Cloud or Lightsail VMs (IP, location, SSH user)
+- **Apps** — Phoenix OTP releases and Go/Cais binaries (detected from `mix.exs` / `go.mod`)
 - **Deployments** — queued → running → success/failed, with build logs
 - **GitHub webhooks** — HMAC-verified `POST /webhooks/github`
 - **Oban queue** — background deploy worker with Mox-tested runner behaviour
-- **SSH deploys** — clone, build OTP release on the VM, migrate, restart systemd
+- **SSH deploys** — clone, build on the VM, migrate, restart systemd
 
 ## Requirements
 
@@ -31,7 +31,28 @@ mix phx.server
 
 Open [http://localhost:4000](http://localhost:4000).
 
-## Real deploys (Lightsail SSH)
+## Hetzner CX33 (shared Phoenix + Go host)
+
+CX33 is 4 shared vCPU / 8 GB RAM / 80 GB NVMe / 20 TB traffic. It is **not** sold in Ashburn; the default location is Falkenstein (`fsn1`).
+
+```bash
+export HCLOUD_TOKEN=...          # Hetzner Cloud API token
+# optional: reuse the Lightsail PEM so the panel can SSH with the existing key
+./scripts/deploy/provision-hetzner-cx33.sh
+export HETZNER_SERVER_IP=x.x.x.x
+./scripts/deploy/bootstrap-hetzner-server.sh
+./scripts/deploy/migrate-lightsail-to-hetzner.sh
+```
+
+Then point Hostinger A records at the new IP and register the server in the panel:
+
+```bash
+HETZNER_SERVER_IP=x.x.x.x bin/phoenix_paas rpc 'Code.eval_file("priv/scripts/setup_hetzner.exs")'
+```
+
+Leave Lightsail running until HTTPS on Hetzner is healthy.
+
+## Real deploys (SSH)
 
 By default dev uses `FakeRunner` (simulated logs). For real deploys:
 
@@ -69,7 +90,9 @@ This creates `matheus.puppe@gmail.com` as owner of the **Gestão Bem** tenant wi
 
 | Variable | Description |
 |----------|-------------|
-| `DEPLOY_RUNNER` | `fake` (default) or `ssh` for real Lightsail deploys |
+| `DEPLOY_RUNNER` | `fake` (default) or `ssh` for real deploys |
+| `HCLOUD_TOKEN` / `HETZNER_API_TOKEN` | Hetzner Cloud API token (sync specs / resize) |
+| `HETZNER_SERVER_IP` | Public IPv4 of the CX33 |
 | `GITHUB_TOKEN` | GitHub PAT for cloning private repos |
 | `PHX_SERVER` | Set to start HTTP server (e.g. in production) |
 | `PORT` | HTTP port (default `4000`) |

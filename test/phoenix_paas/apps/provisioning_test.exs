@@ -37,6 +37,38 @@ defmodule PhoenixPaas.Apps.ProvisioningTest do
     assert preset["server_id"] == catalog_server.id
   end
 
+  test "preset_from_repo/2 uses known profile for vexo on catalogo-lightsail", %{
+    catalog_server: catalog_server
+  } do
+    preset = Provisioning.preset_from_repo("puppe1990/vexo", [catalog_server])
+
+    assert preset["name"] == "Vexo"
+    assert preset["slug"] == "vexo"
+    assert preset["host"] == "vexo.gestaobem.com"
+    assert preset["port"] == 4012
+    assert preset["systemd_unit"] == "vexo"
+    assert preset["release_path"] == "/opt/vexo"
+    assert preset["server_id"] == catalog_server.id
+  end
+
+  test "preset_from_repo/2 uses golang profile for atelie on hetzner", %{
+    servers: servers
+  } do
+    scope = TenancyFixtures.scope_fixture()
+    hetzner = TenancyFixtures.server_fixture(scope, %{name: "gestaobem-cx33"})
+
+    preset = Provisioning.preset_from_repo("puppe1990/atelie", [hetzner | servers])
+
+    assert preset["name"] == "Ateliê"
+    assert preset["slug"] == "atelie"
+    assert preset["host"] == "atelie.gestaobem.com"
+    assert preset["port"] == 4020
+    assert preset["runtime"] == "golang"
+    assert preset["systemd_unit"] == "atelie"
+    assert preset["release_path"] == "/opt/atelie"
+    assert preset["server_id"] == hetzner.id
+  end
+
   test "preset_from_repo/2 derives defaults for unknown repos", %{server: server} do
     preset = Provisioning.preset_from_repo("puppe1990/my_new_app", [server])
 

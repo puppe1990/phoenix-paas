@@ -6,6 +6,8 @@ defmodule PhoenixPaas.Deploy.Ssh do
   alias PhoenixPaas.Apps
   alias PhoenixPaas.Apps.App
   alias PhoenixPaas.Deploy.AppManifest
+  alias PhoenixPaas.Deploy.Golang
+  alias PhoenixPaas.Deploy.Runtime
   alias PhoenixPaas.Deploy.ServerProvision
   alias PhoenixPaas.Repo
 
@@ -41,6 +43,14 @@ defmodule PhoenixPaas.Deploy.Ssh do
         File.rm(key_path)
       end
     end
+  end
+
+  defp target_log(stored_ip, host_ip, app_host) when stored_ip == host_ip do
+    "==> Deploy target #{host_ip} (#{app_host})"
+  end
+
+  defp target_log(stored_ip, host_ip, app_host) do
+    "==> Corrected deploy target #{stored_ip} -> #{host_ip} (DNS #{app_host})"
   end
 
   defp ensure_commands(commands) do
@@ -107,9 +117,12 @@ defmodule PhoenixPaas.Deploy.Ssh do
   end
 
   defp upload_and_build(tarball, key_path, server, app, config, sha, work_dir) do
+    host_ip = PhoenixPaas.Deploy.Target.ssh_host_ip(app, server)
+    _ = PhoenixPaas.Deploy.Target.sync_server_host_ip(server, host_ip)
     remote_tar = "/tmp/phoenix_paas_#{sha}.tar.gz"
-    target = "#{server.ssh_user}@#{server.host_ip}"
+    target = "#{server.ssh_user}@#{host_ip}"
     runtime = PhoenixPaas.Deploy.RuntimePackages.resolve(app, work_dir)
+    target_note = target_log(server.host_ip, host_ip, app.host)
 
     with {:ok, upload_out} <- scp(tarball, remote_tar, key_path, target),
          {:ok, build_out} <-
@@ -117,9 +130,10 @@ defmodule PhoenixPaas.Deploy.Ssh do
       log =
         [
           "==> Cloning #{app.github_repo} (branch #{app.branch})",
+          target_note,
           "==> Uploading source to #{target}",
           trim(upload_out),
-          "==> Building OTP release on Lightsail VM",
+          "==> Building on #{server.provider || "lightsail"} VM",
           trim(build_out),
           "==> Deployment successful — live at https://#{app.host}"
         ]
@@ -220,8 +234,20 @@ defmodule PhoenixPaas.Deploy.Ssh do
 
   defp remote_build_script(server, app, config, sha, remote_tar, runtime, work_dir) do
     manifest = AppManifest.resolve(work_dir, app)
-    config = apply_manifest_config(config, manifest)
 
+    config =
+      config
+      |> apply_manifest_config(manifest)
+      |> Map.put(:ssh_user, server.ssh_user)
+
+    if Runtime.kind(work_dir, app) == :golang or manifest.runtime == "golang" do
+      Golang.remote_build_script(server, app, config, sha, remote_tar, manifest)
+    else
+      phoenix_remote_build_script(server, app, config, sha, remote_tar, runtime, manifest)
+    end
+  end
+
+  defp phoenix_remote_build_script(server, app, config, sha, remote_tar, runtime, manifest) do
     packages_install =
       case runtime.packages do
         [] ->
@@ -271,6 +297,7 @@ defmodule PhoenixPaas.Deploy.Ssh do
     mkdir -p "$BUILD_DIR"
     tar -xzf #{remote_tar} -C "$BUILD_DIR"
     cd "$BUILD_DIR"
+    #{mix_project_cd(manifest)}
 
     export MIX_ENV=prod
     export SECRET_KEY_BASE=buildtime_secret_key_base_32chars_min
@@ -323,6 +350,25 @@ defmodule PhoenixPaas.Deploy.Ssh do
     fi
 
     #{ServerProvision.reload_caddy_script()}
+    """
+  end
+
+  defp mix_project_cd(%AppManifest{build_dir: dir}) when is_binary(dir) and dir != "" do
+    """
+    log "Using mix project in #{dir}"
+    cd #{dir}
+    """
+  end
+
+  defp mix_project_cd(%AppManifest{}) do
+    """
+    if [[ ! -f mix.exs ]]; then
+      nested=$(find . -maxdepth 2 -name mix.exs | head -1)
+      if [[ -n "$nested" ]]; then
+        log "Using mix project in $(dirname "$nested")"
+        cd "$(dirname "$nested")"
+      fi
+    fi
     """
   end
 

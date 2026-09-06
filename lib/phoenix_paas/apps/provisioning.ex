@@ -70,6 +70,54 @@ defmodule PhoenixPaas.Apps.Provisioning do
       systemd_unit: "campanha",
       release_path: "/opt/campanha",
       server_name: "campanha-lightsail"
+    },
+    "puppe1990/vexo" => %{
+      name: "Vexo",
+      slug: "vexo",
+      host: "vexo.gestaobem.com",
+      port: 4012,
+      systemd_unit: "vexo",
+      release_path: "/opt/vexo",
+      server_name: "catalogo-lightsail"
+    },
+    "puppe1990/assistente-ia" => %{
+      name: "CLARITY AI",
+      slug: "assistente",
+      host: "clarity.gestaobem.com",
+      port: 4013,
+      systemd_unit: "assistente",
+      release_path: "/opt/assistente",
+      server_name: "catalogo-lightsail"
+    },
+    "puppe1990/atelie" => %{
+      name: "Ateliê",
+      slug: "atelie",
+      host: "atelie.gestaobem.com",
+      port: 4020,
+      runtime: "golang",
+      systemd_unit: "atelie",
+      release_path: "/opt/atelie",
+      server_name: "gestaobem-cx33"
+    },
+    "puppe1990/leilao-erp" => %{
+      name: "Leilão ERP",
+      slug: "leilao-erp",
+      host: "eletronicos.gestaobem.com",
+      port: 8080,
+      runtime: "golang",
+      systemd_unit: "leilao-erp",
+      release_path: "/opt/leilao-erp",
+      server_name: "gestaobem-cx33"
+    },
+    "puppe1990/trama-bras" => %{
+      name: "Trama Brás",
+      slug: "trama-bras",
+      host: "trama.gestaobem.com",
+      port: 4006,
+      runtime: "golang",
+      systemd_unit: "trama-bras",
+      release_path: "/opt/trama-bras",
+      server_name: "gestaobem-cx33"
     }
   }
 
@@ -162,12 +210,23 @@ defmodule PhoenixPaas.Apps.Provisioning do
 
   defp default_server_id([]), do: nil
 
-  defp default_server_id([%Server{id: id} | _]), do: id
+  defp default_server_id(servers) do
+    Enum.find_value(servers, fn
+      %Server{id: id, name: "gestaobem-cx33"} -> id
+      _ -> nil
+    end) ||
+      case servers do
+        [%Server{id: id} | _] -> id
+        _ -> nil
+      end
+  end
 
   defp put_deploy_defaults(%{slug: slug} = attrs) when is_binary(slug) and slug != "" do
+    runtime = Map.get(attrs, :runtime, "phoenix")
+
     attrs
-    |> Map.put_new(:systemd_unit, App.default_systemd_unit(slug))
-    |> Map.put_new(:release_path, App.default_release_path(slug))
+    |> Map.put_new(:systemd_unit, App.default_systemd_unit(slug, runtime))
+    |> Map.put_new(:release_path, App.default_release_path(slug, runtime))
   end
 
   defp put_deploy_defaults(attrs), do: attrs

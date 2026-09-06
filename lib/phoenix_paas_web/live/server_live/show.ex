@@ -34,10 +34,11 @@ defmodule PhoenixPaasWeb.ServerLive.Show do
          |> put_flash(:info, "Machine specs refreshed")}
 
       {:error, :missing_instance_name} ->
-        {:noreply, put_flash(socket, :error, "Set the AWS instance name to sync specs")}
+        {:noreply, put_flash(socket, :error, "Set the instance name to sync specs")}
 
       {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, "Could not fetch instance specs from Lightsail")}
+        {:noreply,
+         put_flash(socket, :error, "Could not fetch instance specs from the cloud provider")}
     end
   end
 
@@ -68,7 +69,7 @@ defmodule PhoenixPaasWeb.ServerLive.Show do
           {:noreply,
            socket
            |> assign(:resizing?, false)
-           |> put_flash(:error, "Set the AWS instance name before resizing")}
+           |> put_flash(:error, "Set the instance name before resizing")}
 
         {:error, _reason} ->
           {:noreply,
@@ -143,12 +144,12 @@ defmodule PhoenixPaasWeb.ServerLive.Show do
           <.info_tile
             label="Monthly cost"
             value={Server.format_price(@server)}
-            sub="Lightsail bundle"
+            sub={provider_label(@server)}
           />
           <.info_tile
             label="Last synced"
             value={format_synced_at(@server.specs_synced_at)}
-            sub="AWS Lightsail"
+            sub={provider_label(@server)}
           />
           <.info_tile
             label="SSH key"
@@ -168,7 +169,7 @@ defmodule PhoenixPaasWeb.ServerLive.Show do
               Upgrade or downgrade plan
             </h3>
             <p class="text-[11px] text-hd-muted">
-              Changes the Lightsail bundle for this VM. The instance may restart briefly.
+              Changes the instance plan for this VM. The instance may restart briefly.
             </p>
           </div>
 
@@ -208,7 +209,7 @@ defmodule PhoenixPaasWeb.ServerLive.Show do
           </form>
 
           <p :if={@resize_options == []} class="text-[11px] text-hd-muted">
-            Sync specs from Lightsail to load available upgrade and downgrade options.
+            Sync specs from the cloud provider to load available upgrade and downgrade options.
           </p>
         </div>
       </div>
@@ -224,11 +225,22 @@ defmodule PhoenixPaasWeb.ServerLive.Show do
         true -> "change"
       end
 
-    price = PhoenixPaas.AWS.Lightsail.Bundle.format_price(bundle)
+    price = bundle_price(bundle, server)
     ram = Server.format_ram(%Server{ram_mb: bundle.ram_mb})
 
     "#{bundle.bundle_name} · #{bundle.cpu_count} vCPU · #{ram} · #{bundle.disk_gb} GB · #{price} (#{direction})"
   end
+
+  defp bundle_price(bundle, %Server{provider: "hetzner"}) do
+    "€#{Decimal.round(bundle.monthly_price_usd, 2)}/mo"
+  end
+
+  defp bundle_price(bundle, _server) do
+    PhoenixPaas.AWS.Lightsail.Bundle.format_price(bundle)
+  end
+
+  defp provider_label(%Server{provider: "hetzner"}), do: "Hetzner Cloud"
+  defp provider_label(_), do: "AWS Lightsail"
 
   defp format_synced_at(nil), do: "Never"
 

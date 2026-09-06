@@ -5,6 +5,10 @@ defmodule PhoenixPaas.Deploy.ServerProvision do
   alias PhoenixPaas.Deploy.AppManifest
 
   @doc false
+  def provision_script(%App{} = app, config, %AppManifest{runtime: "golang"} = manifest) do
+    golang_provision_script(app, config, manifest)
+  end
+
   def provision_script(%App{} = app, config, %AppManifest{} = manifest) do
     data_dir = "/var/lib/#{Path.basename(config.release_path)}"
     env_dir = Path.dirname(config.env_file)
@@ -47,6 +51,73 @@ defmodule PhoenixPaas.Deploy.ServerProvision do
     #{caddy_script}
     """
   end
+
+  defp golang_provision_script(%App{} = app, config, %AppManifest{} = manifest) do
+    data_dir = "#{config.release_path}/data"
+    env_dir = Path.dirname(config.env_file)
+    ssh_user = Map.get(config, :ssh_user, "ubuntu")
+    memory_max = manifest.memory_max_mb || 256
+    binaries = manifest.binaries || ["server"]
+
+    units =
+      Enum.map_join(binaries, "\n", fn bin ->
+        unit_name = golang_unit_name(config.systemd_unit, bin)
+        exec = "#{config.release_path}/current/bin/#{bin}"
+        description = golang_unit_description(app.name, bin)
+
+        unit = """
+        [Unit]
+        Description=#{escape_unit_description(description)}
+        After=network.target
+
+        [Service]
+        Type=exec
+        User=#{ssh_user}
+        Group=#{ssh_user}
+        WorkingDirectory=#{config.release_path}/current
+        EnvironmentFile=#{config.env_file}
+        ExecStart=#{exec}
+        Restart=always
+        RestartSec=5
+        MemoryMax=#{memory_max}M
+        LimitNOFILE=65535
+        NoNewPrivileges=true
+        PrivateTmp=true
+
+        [Install]
+        WantedBy=multi-user.target
+        """
+
+        """
+        sudo tee /etc/systemd/system/#{unit_name}.service > /dev/null <<'PAAS_SYSTEMD_UNIT'
+        #{String.trim_trailing(unit)}
+        PAAS_SYSTEMD_UNIT
+
+        sudo systemctl enable #{unit_name}
+        """
+      end)
+
+    caddy_script = caddy_provision_script(app, manifest)
+
+    """
+    log "Provisioning host #{app.host} on port #{app.port}"
+    sudo mkdir -p #{shell_escape(env_dir)} #{shell_escape(data_dir)}
+    id #{ssh_user} >/dev/null 2>&1 || sudo useradd --create-home --shell /bin/bash #{ssh_user}
+    sudo chown -R #{ssh_user}:#{ssh_user} #{shell_escape(config.release_path)}
+
+    #{units}
+    sudo systemctl daemon-reload
+
+    #{caddy_script}
+    """
+  end
+
+  defp golang_unit_name(systemd_unit, "server"), do: systemd_unit
+  defp golang_unit_name(systemd_unit, bin), do: "#{systemd_unit}-#{bin}"
+
+  defp golang_unit_description(name, "server"), do: "#{name} (Cais)"
+  defp golang_unit_description(name, "worker"), do: "#{name} worker (Cais jobs)"
+  defp golang_unit_description(name, bin), do: "#{name} #{bin}"
 
   defp caddy_provision_script(%App{}, %AppManifest{caddy_mode: "replace", caddyfile: path})
        when is_binary(path) and path != "" do

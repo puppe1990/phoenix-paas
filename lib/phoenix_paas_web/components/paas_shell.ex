@@ -32,7 +32,7 @@ defmodule PhoenixPaasWeb.PaasShell do
               </span>
             </div>
             <p class="text-xs text-hd-muted">
-              AWS Lightsail & GitHub Webhooks deploy pipeline for Elixir OTP nodes
+              Hetzner Cloud & GitHub webhooks for Phoenix and Go apps
             </p>
           </div>
         </.link>

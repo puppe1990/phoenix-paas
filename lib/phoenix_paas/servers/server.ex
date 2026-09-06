@@ -13,6 +13,7 @@ defmodule PhoenixPaas.Servers.Server do
     field :region, :string, default: "us-east-1"
     field :ssh_private_key_encrypted, Encrypted.Binary
     field :ssh_private_key, :string, virtual: true
+    field :provider, :string, default: "lightsail"
     field :aws_instance_name, :string
     field :bundle_id, :string
     field :bundle_name, :string
@@ -38,6 +39,7 @@ defmodule PhoenixPaas.Servers.Server do
       :ssh_user,
       :region,
       :ssh_private_key,
+      :provider,
       :aws_instance_name,
       :bundle_id,
       :bundle_name,
@@ -53,6 +55,7 @@ defmodule PhoenixPaas.Servers.Server do
     ])
     |> validate_required([:name, :host_ip, :ssh_user, :region, :tenant_id])
     |> validate_inclusion(:deploy_mode, ["shared", "dedicated"])
+    |> validate_inclusion(:provider, ["lightsail", "hetzner"])
     |> validate_length(:name, min: 1, max: 160)
     |> validate_ipv4(:host_ip)
     |> maybe_put_ssh_key()
@@ -84,6 +87,10 @@ defmodule PhoenixPaas.Servers.Server do
   end
 
   def format_ram(_), do: "—"
+
+  def format_price(%__MODULE__{provider: "hetzner", monthly_price_usd: %Decimal{} = price}) do
+    "€#{Decimal.round(price, 2)}/mo"
+  end
 
   def format_price(%__MODULE__{monthly_price_usd: %Decimal{} = price}) do
     "$#{Decimal.round(price, 2)}/mo"

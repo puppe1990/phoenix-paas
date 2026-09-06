@@ -18,6 +18,7 @@ defmodule PhoenixPaas.Apps.App do
     field :release_path, :string
     field :webhook_secret, :string
     field :auto_deploy, :boolean, default: true
+    field :runtime, :string, default: "phoenix"
     field :runtime_apt_packages, {:array, :string}, default: []
     field :runtime_packages_text, :string, virtual: true
 
@@ -41,6 +42,7 @@ defmodule PhoenixPaas.Apps.App do
       :release_path,
       :webhook_secret,
       :auto_deploy,
+      :runtime,
       :runtime_apt_packages,
       :runtime_packages_text,
       :server_id,
@@ -50,6 +52,7 @@ defmodule PhoenixPaas.Apps.App do
     |> cast_runtime_packages()
     |> put_runtime_packages_text()
     |> validate_format(:github_repo, ~r/^[^\/]+\/[^\/]+$/, message: "must be owner/repo")
+    |> validate_inclusion(:runtime, ["phoenix", "golang"])
     |> validate_number(:port, greater_than: 0, less_than: 65_536)
     |> unique_constraint(:slug, name: :apps_tenant_id_slug_index)
     |> unique_constraint(:github_repo, name: :apps_tenant_id_github_repo_index)
@@ -70,15 +73,23 @@ defmodule PhoenixPaas.Apps.App do
   def release_name("pay_core"), do: "pay_core"
   def release_name(slug) when is_binary(slug), do: String.replace(slug, "-", "_")
 
-  def default_systemd_unit("trip-planner"), do: "trip_planner_ia"
-  def default_systemd_unit("decor"), do: "festa_platform"
-  def default_systemd_unit("pay-core"), do: "pay_core"
-  def default_systemd_unit(slug) when is_binary(slug), do: "phx-#{slug}"
+  def default_systemd_unit(slug, runtime \\ "phoenix")
 
-  def default_release_path("trip-planner"), do: "/opt/trip_planner_ia"
-  def default_release_path("decor"), do: "/opt/festa_platform"
-  def default_release_path("pay-core"), do: "/opt/pay_core"
-  def default_release_path(slug) when is_binary(slug), do: "/opt/#{release_name(slug)}"
+  def default_systemd_unit(slug, "golang") when is_binary(slug), do: slug
+  def default_systemd_unit("trip-planner", _), do: "trip_planner_ia"
+  def default_systemd_unit("decor", _), do: "festa_platform"
+  def default_systemd_unit("pay-core", _), do: "pay_core"
+  def default_systemd_unit("vexo", _), do: "vexo"
+  def default_systemd_unit("assistente", _), do: "assistente"
+  def default_systemd_unit(slug, _) when is_binary(slug), do: "phx-#{slug}"
+
+  def default_release_path(slug, runtime \\ "phoenix")
+
+  def default_release_path(slug, "golang") when is_binary(slug), do: "/opt/#{slug}"
+  def default_release_path("trip-planner", _), do: "/opt/trip_planner_ia"
+  def default_release_path("decor", _), do: "/opt/festa_platform"
+  def default_release_path("pay-core", _), do: "/opt/pay_core"
+  def default_release_path(slug, _) when is_binary(slug), do: "/opt/#{release_name(slug)}"
 
   def deploy_config(%__MODULE__{} = app) do
     release_path = app.release_path || default_release_path(app.slug)
@@ -95,9 +106,11 @@ defmodule PhoenixPaas.Apps.App do
   defp put_deploy_defaults(changeset) do
     case get_field(changeset, :slug) do
       slug when is_binary(slug) and slug != "" ->
+        runtime = get_field(changeset, :runtime) || "phoenix"
+
         changeset
-        |> put_default(:systemd_unit, default_systemd_unit(slug))
-        |> put_default(:release_path, default_release_path(slug))
+        |> put_default(:systemd_unit, default_systemd_unit(slug, runtime))
+        |> put_default(:release_path, default_release_path(slug, runtime))
 
       _ ->
         changeset
